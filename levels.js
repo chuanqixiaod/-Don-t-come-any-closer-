@@ -1,7 +1,6 @@
 // 谁坐哪儿 · 关卡数据（外置）
 // 从 prototype.html 抽离，让主文件更轻 + 可独立缓存
 var LEVELS = [
-var LEVELS = [
   {
     name:'第 1 关',scene:'🚌 公交车',
     tip:'点下方乘客卡片选中，再点空座位安顿 TA。带 🪟 的座位靠窗。',
