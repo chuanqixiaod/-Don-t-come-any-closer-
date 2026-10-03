@@ -55,14 +55,14 @@
   }
   header{
     background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;
-    padding:8px 12px;position:sticky;top:0;z-index:10;box-shadow:0 4px 16px rgba(99,102,241,.3);
+    padding:6px 10px;position:sticky;top:0;z-index:10;box-shadow:0 4px 16px rgba(99,102,241,.3);
   }
-  .hrow{display:flex;align-items:center;justify-content:space-between;max-width:660px;margin:0 auto;}
-  .logo{font-weight:800;font-size:16px;}
-  .dots{display:flex;gap:7px;}
-  .dot{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;}
+  .hrow{display:flex;flex-direction:column;gap:4px;max-width:660px;margin:0 auto;}
+  .logo{font-weight:800;font-size:14px;}
+  .dots{display:flex;gap:3px;justify-content:center;flex-wrap:nowrap;overflow:hidden;}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;flex-shrink:0;font-size:8px;display:flex;align-items:center;justify-content:center;}
   .dot.done{background:#fbbf24;}
-  .dot.cur{background:#fff;transform:scale(1.35);}
+  .dot.cur{background:#fff;transform:scale(1.4);box-shadow:0 0 0 2px rgba(255,255,255,.4);}
   main{max-width:660px;margin:0 auto;padding:8px;}
   .scene-card{
     background:#fff;border-radius:14px;padding:12px 12px 10px;margin-bottom:8px;
@@ -1254,12 +1254,17 @@ function render(){
 
   var dots=document.getElementById('dots');
   dots.innerHTML='';
-  for(var i=0;i<LEVELS.length;i++){
+  // 只渲染当前关卡前后各3个，两端加省略号
+  var RANGE=3;
+  var from=Math.max(0,cur-RANGE);
+  var to=Math.min(LEVELS.length-1,cur+RANGE);
+  if(from>0){ var ell=document.createElement('span'); ell.className='dot ell'; ell.textContent='…'; ell.style.background='transparent'; ell.style.fontSize='10px'; ell.style.color='rgba(255,255,255,.6)'; dots.appendChild(ell); }
+  for(var i=from;i<=to;i++){
     var d=document.createElement('span');
     var stars=bestStars[i]||0;
     d.className='dot'+(i<=unlocked?' done':'')+(i===cur?' cur':'');
-    if(stars>0){ d.innerHTML='<span style="position:relative;">⭐<span style="position:absolute;top:12px;left:-2px;font-size:10px;line-height:1;color:#fbbf24;">'+stars+'</span></span>'; }
-    else if(i<=unlocked){ d.textContent='✓'; d.style.fontSize='10px'; d.style.color='#fff'; }
+    if(stars>0){ d.innerHTML=stars; d.style.fontSize='7px'; d.style.color='#fff'; }
+    else if(i<=unlocked){ d.textContent='✓'; d.style.fontSize='6px'; d.style.color='#fff'; }
     (function(idx){
       d.addEventListener('click',function(){
         if(idx<=unlocked){ cur=idx; resetLevel(); }
@@ -1267,6 +1272,7 @@ function render(){
     })(i);
     dots.appendChild(d);
   }
+  if(to<LEVELS.length-1){ var ell2=document.createElement('span'); ell2.className='dot ell'; ell2.textContent='…'; ell2.style.background='transparent'; ell2.style.fontSize='10px'; ell2.style.color='rgba(255,255,255,.6)'; dots.appendChild(ell2); }
 
   var g=document.getElementById('grid');
   g.innerHTML='';
