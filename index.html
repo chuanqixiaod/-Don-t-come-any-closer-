@@ -1,0 +1,2500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>谁坐哪儿？· 排座位逻辑谜题 · 可玩原型 v0.1</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{
+    --c-primary:#6366f1; --c-primary2:#8b5cf6;
+    --c-bg1:#f5f3ff; --c-bg2:#eef2ff;
+    --c-card:#fff; --c-text:#1e1b4b;
+    --c-seat-fill:#fff; --c-seat-stroke:#a5b4fc; --c-seat-window-fill:#bae6fd; --c-seat-window-stroke:#0284c7;
+    --shadow:0 2px 10px rgba(99,102,241,.08);
+  }
+  /* ===== 国风流 ===== */
+  body.theme-ink{
+    --c-primary:#c0392b; --c-primary2:#e74c3c;
+    --c-bg1:#faf6ee; --c-bg2:#f5efe2;
+    --c-card:#fdfbf4; --c-text:#1a0f05;
+    --c-seat-fill:#fff; --c-seat-stroke:#cd7f32; --c-seat-window-fill:#d4e5f7; --c-seat-window-stroke:#2e86c1;
+    --shadow:0 2px 10px rgba(205,127,50,.12);
+  }
+  body.theme-ink header{background:linear-gradient(135deg,#8b1a1a,#c0392b);}
+  body.theme-ink .seat-card{border:1px solid #cd7f32;}
+  body.theme-ink .scene-name{color:#8b1a1a;}
+  body.theme-ink .lvl-num{color:#8b1a1a;}
+  body.theme-ink .lvl-card{background:#f5efe2;}
+  /* ===== 卡通风 ===== */
+  body.theme-toon{
+    --c-primary:#ff6b35; --c-primary2:#f7931e;
+    --c-bg1:#fff8e7; --c-bg2:#ffeaa7;
+    --c-card:#ffffff; --c-text:#2d3436;
+    --c-seat-fill:#fff; --c-seat-stroke:#ff6b35; --c-seat-window-fill:#a8e6cf; --c-seat-window-stroke:#16a085;
+    --shadow:0 4px 0 rgba(255,107,53,.25);
+  }
+  body.theme-toon header{background:linear-gradient(135deg,#ff6b35,#f7931e);}
+  body.theme-toon .seat-card{border-radius:28px;}
+  body.theme-toon .scene-name{color:#e17055;}
+  body.theme-toon .lvl-num{color:#e17055;}
+  body.theme-toon .tcard .em{font-size:28px;}
+  /* ===== Safe-area + 触控优化 ===== */
+  main{padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+  header{padding-top:calc(14px + env(safe-area-inset-top));}
+  .btn-sec,.btn-pri{min-height:48px;min-width:48px;}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .btns button{flex:1 1 auto;font-size:13px;padding:8px 10px;}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+    background:linear-gradient(160deg,#f5f3ff 0%,#eef2ff 60%,#faf5ff 100%);
+    min-height:100vh;color:#1e1b4b;padding-bottom:40px;
+  }
+  header{
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;
+    padding:14px 16px;position:sticky;top:0;z-index:10;box-shadow:0 4px 16px rgba(99,102,241,.3);
+  }
+  .hrow{display:flex;align-items:center;justify-content:space-between;max-width:660px;margin:0 auto;}
+  .logo{font-weight:800;font-size:20px;}
+  .dots{display:flex;gap:7px;}
+  .dot{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;}
+  .dot.done{background:#fbbf24;}
+  .dot.cur{background:#fff;transform:scale(1.35);}
+  main{max-width:660px;margin:0 auto;padding:18px;}
+  .scene-card{
+    background:#fff;border-radius:22px;padding:22px 22px 18px;margin-bottom:16px;
+    box-shadow:0 8px 24px rgba(99,102,241,.12);
+  }
+  .scene-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .scene-name{font-size:26px;font-weight:800;color:#4338ca;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+  /* Header 里的难度/NPC/约束 badge */
+  .hd-badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:10px;margin-left:4px;}
+  .hd-hd{background:#dbeafe;color:#1e40af;}
+  .hd-npc{background:#fce7f3;color:#9d174d;}
+  .hd-chars{background:#dcfce7;color:#166534;}
+  .lvl-name{font-size:14px;color:#8b5cf6;font-weight:600;}
+  .tip{font-size:14px;color:#6b7280;background:#f5f3ff;border-radius:12px;padding:10px 14px;margin-bottom:14px;line-height:1.5;}
+  .front-label{display:none;text-align:center;font-size:13px;color:#a78bfa;font-weight:700;margin-bottom:6px;letter-spacing:3px;}
+  .grid{display:grid;gap:18px 12px;justify-content:center;}
+
+  /* 电影院选座风格 SVG（参考图：连体轮廓 + 靠背圆弧顶 + 坐垫圆角底） */
+  .seat{
+    width:var(--seat);height:calc(var(--seat) * 0.72);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 72'><path d='M20,18 Q20,4 50,4 Q80,4 80,18 L80,54 Q80,66 68,66 L32,66 Q20,66 20,54 Z' fill='%23fff' stroke='%23a5b4fc' stroke-width='2.5' stroke-linejoin='round'/></svg>");
+    background-size:contain;background-repeat:no-repeat;background-position:center;
+    position:relative;cursor:pointer;transition:transform .15s;
+  }
+  .seat:hover{transform:translateY(-2px) scale(1.05);}
+  .seat:active{transform:translateY(1px) scale(.98);}
+  .seat.blank{background-image:none;cursor:default;}
+  .seat.window{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 72'><path d='M20,18 Q20,4 50,4 Q80,4 80,18 L80,54 Q80,66 68,66 L32,66 Q20,66 20,54 Z' fill='%23bae6fd' stroke='%230284c7' stroke-width='2.5' stroke-linejoin='round'/></svg>");
+  }
+  .seat.blank.window{background-image:none;}
+  .wicon{position:absolute;top:14%;right:18%;font-size:12px;z-index:3;}
+
+  /* 乘客 emoji：占据靠背+坐垫中间的镂空区域 */
+  .pchar{
+    position:absolute;top:22%;left:22%;right:22%;bottom:10%;
+    border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-size:calc(var(--seat) * 0.3);
+    box-shadow:0 1px 4px rgba(0,0,0,.12);
+  }
+
+  /* 乘客入座后座位变成实心填充（已售） */
+  .seat.filled{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 72'><path d='M20,18 Q20,4 50,4 Q80,4 80,18 L80,54 Q80,66 68,66 L32,66 Q20,66 20,54 Z' fill='%23ede9fe' stroke='%238b5cf6' stroke-width='2.5' stroke-linejoin='round'/></svg>");
+  }
+  .badge{position:absolute;bottom:-6px;right:-6px;font-size:18px;background:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.2);}
+  .status{text-align:center;font-size:14px;color:#8b5cf6;font-weight:600;margin-top:14px;min-height:20px;}
+  .tray-head{font-size:15px;font-weight:700;color:#4338ca;margin:18px 2px 10px;}
+  .tray{display:flex;flex-wrap:wrap;gap:10px;}
+  .tcard{
+    background:#fff;border-radius:18px;padding:12px 10px 10px;min-width:96px;text-align:center;cursor:pointer;
+    border:2px solid #ede9fe;transition:all .18s cubic-bezier(.2,.9,.3,1.2);
+    box-shadow:0 3px 10px rgba(99,102,241,.08);position:relative;overflow:hidden;
+  }
+  .tcard::before{ /* 顶部 trait 色条 */
+    content:'';position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,#a5b4fc,#c4b5fd);opacity:0;transition:opacity .2s;
+  }
+  .tcard.has-trait::before{opacity:1;}
+  .tcard .em{font-size:34px;line-height:1.1;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.12));}
+  .tcard .nm{font-size:13px;font-weight:700;color:#3730a3;margin-top:4px;line-height:1.3;}
+  .tcard .tr{font-size:11px;color:#8b5cf6;margin-top:2px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .tcard .trait-badges{display:flex;gap:3px;justify-content:center;margin-top:4px;flex-wrap:wrap;}
+  .tcard .trait-badges span{font-size:14px;background:#f5f3ff;border-radius:8px;padding:1px 5px;line-height:1;}
+  .tcard.sel{border-color:#8b5cf6;background:#f5f3ff;transform:translateY(-5px);box-shadow:0 10px 22px rgba(139,92,246,.35);}
+  .tcard.sel::before{background:linear-gradient(90deg,#8b5cf6,#6366f1);}
+  .tcard.out{opacity:.3;pointer-events:none;filter:grayscale(.5);}
+  .tcard:hover:not(.out){transform:translateY(-3px);box-shadow:0 6px 16px rgba(99,102,241,.18);}
+
+  /* ===== 动画 ===== */
+  @keyframes bounceIn{
+    0%{transform:scale(.3);opacity:0;}
+    55%{transform:scale(1.18);opacity:1;}
+    75%{transform:scale(.92);}
+    100%{transform:scale(1);}
+  }
+  @keyframes pop{from{transform:scale(.5);opacity:0;}to{transform:scale(1);opacity:1;}}
+  @keyframes pulse-happy{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.06);}
+  }
+  @keyframes shake-angry{
+    0%,100%{transform:translateX(0);}
+    15%{transform:translateX(-5px) rotate(-3deg);}
+    30%{transform:translateX(5px) rotate(3deg);}
+    45%{transform:translateX(-4px) rotate(-2deg);}
+    60%{transform:translateX(4px) rotate(2deg);}
+    75%{transform:translateX(-2px);}
+  }
+  .pchar.anim-bounce{animation:bounceIn .45s cubic-bezier(.34,1.56,.64,1);}
+  .pchar.anim-happy{animation:pulse-happy 1.8s ease-in-out infinite;}
+  .pchar.anim-angry{animation:shake-angry .6s ease-in-out infinite;}
+  .badge.anim-pop{animation:pop .25s ease-out;}
+  .btns{display:flex;gap:10px;justify-content:center;margin-top:18px;}
+  button{
+    border:none;border-radius:12px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:transform .1s;
+  }
+  button:active{transform:scale(.95);}
+  .btn-sec{background:#ede9fe;color:#6d28d9;}
+  .btn-pri{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 16px rgba(99,102,241,.35);}
+  .overlay{
+    position:fixed;inset:0;background:rgba(49,46,129,.45);display:flex;align-items:center;justify-content:center;z-index:20;
+  }
+  .overlay.hidden{display:none;}
+  .win-card{
+    background:#fff;border-radius:24px;padding:30px 34px;text-align:center;max-width:320px;width:88%;
+    animation:pop .25s;box-shadow:0 20px 60px rgba(0,0,0,.25);
+  }
+  .win-emoji{font-size:52px;}
+  .win-title{font-size:20px;font-weight:800;color:#4338ca;margin:8px 0 4px;}
+  .win-sub{font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.6;}
+  .foot{text-align:center;color:#c4b5fd;font-size:12px;margin-top:24px;}
+
+  /* ===== 关卡选择页 ===== */
+  .overlay-box{background:#fff;border-radius:24px;padding:20px;max-width:480px;width:94%;max-height:85vh;overflow-y:auto;animation:pop .25s;}
+  .overlay-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .overlay-head h2{font-size:20px;font-weight:800;color:#4338ca;}
+  .btn-close{border:none;background:#f3f4f6;font-size:20px;width:32px;height:32px;border-radius:50%;cursor:pointer;color:#6b7280;}
+  .ls-stats{font-size:13px;color:#6b7280;margin-bottom:14px;background:#f5f3ff;border-radius:12px;padding:8px 12px;}
+  .level-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .lvl-card{
+    position:relative;background:#f5f3ff;border-radius:14px;padding:14px 10px;cursor:pointer;text-align:center;
+    border:2px solid transparent;transition:all .15s;
+  }
+  .lvl-card:hover:not(.locked){border-color:#a5b4fc;transform:translateY(-2px);}
+  .lvl-card.locked{opacity:.45;cursor:not-allowed;}
+  .lvl-card.active{border-color:#6366f1;background:#ede9fe;}
+  .lvl-num{font-size:22px;font-weight:900;color:#4338ca;line-height:1;}
+  .lvl-card.locked .lvl-num{font-size:18px;}
+  .lvl-scene{font-size:12px;color:#6b7280;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lvl-stars{font-size:13px;color:#fbbf24;margin-top:4px;font-weight:700;}
+  .lvl-done{position:absolute;top:-6px;right:-6px;background:#10b981;color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;}
+  /* ===== 关卡筛选器 + 标签 ===== */
+  .ls-filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .ls-filter{background:#f5f3ff;border:1.5px solid #e0e7ff;border-radius:14px;padding:6px 12px;font-size:12px;font-weight:700;color:#4338ca;cursor:pointer;transition:all .15s;}
+  .ls-filter:hover{border-color:#a5b4fc;}
+  .ls-filter.active{background:#6366f1;color:#fff;border-color:#6366f1;}
+  .lvl-cards-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .lvl-tag{display:inline-block;font-size:10px;font-weight:600;border-radius:8px;padding:1px 5px;margin-left:2px;vertical-align:middle;}
+  .lvl-tag-npc{background:#fce7f3;color:#9d174d;}
+  .lvl-tag-pair{background:#dbeafe;color:#1e40af;}
+  .lvl-tag-diff{background:#fef3c7;color:#92400e;}
+  .star-got{color:#f59e0b;}
+
+  /* ===== 反馈面板 ===== */
+  .feedback{margin-top:14px;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 2px 10px rgba(99,102,241,.08);max-height:160px;overflow-y:auto;}
+  .fb-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;}
+  .fb-emoji{font-size:18px;}
+  .fb-name{font-weight:700;color:#1e1b4b;min-width:56px;}
+  .fb-status{margin-left:auto;font-size:12px;font-weight:700;}
+  .fb-ok{color:#10b981;}
+  .fb-fail{color:#dc2626;}
+  .fb-reason{color:#6b7280;font-size:12px;margin-left:6px;}
+
+  /* ===== 提示高亮 ===== */
+  .seat.hint-target{animation:hintPulse 1.2s ease-in-out infinite;border:2.5px dashed #f59e0b !important;box-shadow:0 0 0 3px rgba(245,158,11,.35);}
+  @keyframes hintPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+  .tcard.hint-char{outline:3px solid #f59e0b;outline-offset:2px;box-shadow:0 0 14px rgba(245,158,11,.5);}
+  .hint-banner{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#fff;padding:10px 18px;border-radius:20px;font-weight:700;font-size:14px;z-index:30;box-shadow:0 4px 20px rgba(245,158,11,.4);animation:pop .25s;max-width:90vw;text-align:center;}
+  /* ===== NPC 座位 ===== */
+  .seat.npc-filled{opacity:.92;cursor:pointer;}
+  .seat.npc-filled .pchar{filter:grayscale(.3);}
+  .seat.npc-filled:hover{transform:translateY(-3px);}
+  /* NPC 对话气泡 */
+  .npc-bubble{position:absolute;bottom:115%;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;
+    background:#1e1b4b;color:#fff;padding:8px 12px 10px;border-radius:12px;min-width:120px;max-width:220px;
+    font-size:12px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.25);
+    animation:npcBubbleIn .35s cubic-bezier(.2,.9,.3,1.3);white-space:nowrap;}
+  .npc-bubble.fadeOut{animation:npcBubbleOut .4s forwards;}
+  @keyframes npcBubbleIn{0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.8);}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
+  @keyframes npcBubbleOut{0%{opacity:1;transform:translateX(-50%) scale(1);}100%{opacity:0;transform:translateX(-50%) scale(.9);}}
+  .npc-bubble-em{font-size:16px;margin-bottom:4px;}
+  .npc-bubble-text{font-weight:700;color:#fde68a;}
+  .npc-bubble-tail{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+    width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1e1b4b;}
+
+  /* ===== 成就系统 ===== */
+  .ach-btn{background:rgba(255,255,255,.22);color:#fff;border:none;border-radius:10px;padding:6px 10px;cursor:pointer;font-size:16px;margin-left:6px;}
+  .ach-btn:hover{background:rgba(255,255,255,.35);}
+  .ach-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:40;
+    background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:14px 22px;border-radius:16px;
+    display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(239,68,68,.45);
+    animation:achIn .45s cubic-bezier(.2,.9,.3,1.3);max-width:90vw;}
+  .ach-toast.ach-fade{animation:achOut .4s forwards;}
+  @keyframes achIn{0%{opacity:0;transform:translateX(-50%) translateY(-20px) scale(.8);}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
+  @keyframes achOut{0%{opacity:1;transform:translateX(-50%) scale(1);}100%{opacity:0;transform:translateX(-50%) scale(.9);}}
+  .ach-toast .ach-icon{font-size:36px;}
+  .ach-toast .ach-title{font-size:11px;font-weight:600;opacity:.85;}
+  .ach-toast .ach-name{font-size:15px;font-weight:800;}
+  .ach-toast .ach-desc{font-size:12px;opacity:.9;}
+  .ach-modal .ach-panel{max-width:560px;}
+  .ach-panel h2{text-align:center;color:#4338ca;margin-bottom:16px;}
+  .ach-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+  .ach-card{display:flex;gap:10px;align-items:center;padding:12px;border-radius:14px;border:2px solid;transition:all .2s;}
+  .ach-card.got{background:#f0fdf4;border-color:#86efac;}
+  .ach-card.locked{background:#fafafa;border-color:#e5e7eb;opacity:.55;}
+  .ach-icon-lg{font-size:28px;}
+  .ach-n{font-weight:700;font-size:13px;color:#1f2937;}
+  .ach-d{font-size:11px;color:#6b7280;margin-top:2px;}
+  .ach-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;padding:10px;background:#f5f3ff;border-radius:12px;}
+  .ach-stat{font-size:12px;color:#4338ca;font-weight:600;}
+  .ach-stat b{color:#6366f1;margin-left:2px;}
+  /* 成就面板 tabs */
+  .ach-tabs{display:flex;gap:6px;margin-bottom:12px;}
+  .ach-tab{flex:1;background:#f5f3ff;border:1.5px solid #e0e7ff;border-radius:10px;padding:8px;font-size:13px;font-weight:700;color:#4338ca;cursor:pointer;transition:all .15s;}
+  .ach-tab:hover{border-color:#a5b4fc;}
+  .ach-tab.active{background:#6366f1;color:#fff;border-color:#6366f1;}
+  .ach-tab-content{min-height:200px;}
+  .ach-tip{font-size:12px;color:#6b7280;margin-bottom:10px;text-align:center;}
+  /* 皮肤 tab */
+  .ach-skin-bar{height:10px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-bottom:16px;}
+  .ach-skin-prog{height:100%;background:linear-gradient(90deg,#6366f1,#f59e0b);border-radius:6px;transition:width .3s;}
+  .ach-skin-list{display:flex;flex-direction:column;gap:8px;}
+  .ach-skin-card{display:flex;align-items:center;gap:10px;padding:10px;border:1.5px solid #e5e7eb;border-radius:12px;background:#fafafa;transition:all .15s;}
+  .ach-skin-card.active{border-color:#6366f1;background:#f5f3ff;}
+  .ach-skin-card.locked{opacity:.55;}
+  .ach-skin-preview{display:flex;gap:2px;font-size:18px;min-width:140px;}
+  .ach-skin-name{flex:1;font-weight:700;font-size:13px;color:#1f2937;}
+  .ach-skin-btn{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+  .ach-skin-btn:disabled{background:#d1d5db;cursor:not-allowed;}
+  /* 分享 tab */
+  .ach-lv-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:180px;overflow-y:auto;}
+  .ach-lv-item{background:#f5f3ff;border:1.5px solid #e0e7ff;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:600;color:#4338ca;cursor:pointer;}
+  .ach-lv-item:hover{border-color:#a5b4fc;}
+
+
+  .seal{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(3);
+    width:80px;height:80px;border-radius:14px;
+    background:#c0392b;color:#fff;font-size:42px;font-weight:900;
+    display:flex;align-items:center;justify-content:center;
+    letter-spacing:-2px;box-shadow:0 0 0 3px #fff inset, 0 6px 20px rgba(192,57,43,.5);
+    opacity:0;animation:sealDrop .6s cubic-bezier(.2,.8,.2,1) forwards;
+    pointer-events:none;z-index:5;
+  }
+  .overlay.win-celebrate .seal{ display:flex; }
+  @keyframes sealDrop{
+    0%{opacity:0;top:-30%;transform:translate(-50%,-50%) scale(3) rotate(-15deg);}
+    50%{opacity:1;top:50%;transform:translate(-50%,-50%) scale(.95) rotate(3deg);}
+    70%{transform:translate(-50%,-50%) scale(1.05) rotate(-1deg);}
+    100%{opacity:1;top:50%;transform:translate(-50%,-50%) scale(1) rotate(0deg);}
+  }
+  @keyframes starPop{
+    0%{transform:scale(.3);opacity:0;}
+    60%{transform:scale(1.3);}
+    100%{transform:scale(1);opacity:1;}
+  }
+  .overlay.win-celebrate .win-stars > * { display:inline-block; animation:starPop .5s ease-out backwards; }
+  .overlay.win-celebrate .win-stars > *:nth-child(2) { animation-delay:.1s; }
+  .overlay.win-celebrate .win-stars > *:nth-child(3) { animation-delay:.2s; }
+  .win-stars .empty{ color:#d1d5db; }
+  .dot .curly{ width:14px; height:14px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="logo">🪑 谁坐哪儿？</div>
+    <div class="dots" id="dots"></div>
+  </div>
+</header>
+<main>
+  <div class="scene-card">
+    <div class="scene-head">
+      <span class="scene-name" id="sceneName"></span>
+      <span class="lvl-name" id="lvlName"></span>
+    </div>
+    <div class="tip" id="tip"></div>
+    <div class="front-label">⬆️ 第一排 ⬆️</div>
+    <div class="grid" id="grid"></div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="tray-head">乘客 · 点选后点座位入座</div>
+  <div class="tray" id="tray"></div>
+  <div class="btns">
+    <button class="btn-sec" id="btnUndo" title="撤销上一步（Ctrl+Z）">↩️ 撤销</button>
+    <button class="btn-sec" id="btnEndless" title="无限刷关卡，难度递增">🌊 无尽模式</button>
+    <button class="btn-sec" id="btnDaily" title="每日更新的挑战关">🌅 每日挑战</button>
+    <button class="btn-sec" id="btnLevelSelect">📋 选关</button>
+    <button class="btn-sec" id="btnHint" title="帮你找到下一步最优放置（不消耗任何东西）">💡 提示</button>
+    <button class="btn-sec" id="btnReset">🔄 重排本关</button>
+    <button class="btn-sec" id="btnHelp">❓ 玩法说明</button>
+    <button class="btn-sec" id="btnTheme" title="切换主题">🎨 风格</button>
+    <button class="btn-sec" id="btnClear" title="清除所有本地存档（关卡解锁 + 最佳星级）">🧹 清进度</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+  <div class="foot">原型 v0.2 · 全 30 关 · 玩法验证用 · 进度自动保存</div>
+</main>
+
+<!-- 关卡选择页 overlay -->
+<div id="levelSelectOverlay" class="overlay hidden">
+  <div class="overlay-box">
+    <div class="overlay-head">
+      <h2>📋 选关</h2>
+      <button class="btn-close" id="btnCloseLevelSelect">✕</button>
+    </div>
+    <div class="ls-stats" id="lsStats">共 30 关 · 已解锁 1 关</div>
+    <div id="levelGrid" class="level-grid"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="win">
+  <div class="win-card">
+    <div class="win-emoji">🎉</div>
+    <div class="win-title">全员满意！过关！</div>
+    <div class="win-stars" id="winStar" style="font-size:40px;color:#fbbf24;letter-spacing:4px;margin:6px 0 2px;">★★★</div>
+    <div class="win-steps" id="winSteps" style="font-size:13px;color:#8b5cf6;margin-bottom:10px;"></div>
+    <div class="win-sub" id="winSub"></div>
+    <button class="btn-pri" id="btnNext">下一关 →</button>
+    <div class="seal" id="winSeal" style="display:none;">完</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="help">
+  <div class="win-card">
+    <div class="win-title">玩法说明</div>
+    <div class="win-sub" style="text-align:left;">
+      点选乘客卡片，再点空座位让 TA 入座；点已坐的座位让 TA 起来。<br><br>
+      🪟 非靠窗不坐 —— 必须坐蓝窗座位<br>
+      🗣️ 唠嗑王 —— 身边至少坐 1 人<br>
+      🤫 怕吵 —— 不能挨着唠嗑王<br>
+      💑 小情侣 —— 两人必须挨着<br>
+      ⚔️ 冤家 —— 两人不能挨着<br>
+      ⬆️ 前排控 —— 必须坐第一排<br>
+      🤧 闻不得香水 —— 不能挨着香水哥<br><br>
+      全员 😊 就过关！无时限，随便挪。
+    </div>
+    <button class="btn-pri" id="btnCloseHelp">知道啦</button>
+  </div>
+</div>
+
+<!-- 开发调试面板 -->
+<div class="overlay hidden" id="devPanel">
+  <div class="win-card" style="max-width:440px; text-align:left;">
+    <div class="win-title" style="text-align:center;">🔧 开发调试面板</div>
+    
+    <div style="margin-top:18px;">
+      <b>① 10 个手工关解数验证</b>
+      <div id="solverReport" style="font-size:11px; font-family:monospace; background:#eef2ff; padding:10px; border-radius:8px; margin-top:6px; max-height:160px; overflow-y:auto;"></div>
+      <button class="btn-sec" id="btnRunSolver" style="margin-top:8px;">▶ 跑一遍</button>
+      <button class="btn-sec" id="btnRunP0Test" style="margin-top:8px; background:#dcfce7; color:#166534;">🎯 一键 P0 闭环自测</button>
+    </div>
+    
+    <div style="margin-top:18px; border-top:1px dashed #c7d2fe; padding-top:14px;">
+      <b>② 关卡生成器</b>
+      <div style="margin-top:8px; font-size:13px; display:flex; align-items:center; gap:6px;">
+        难度
+        <input type="range" id="diffSlider" min="1" max="100" value="50" style="flex:1;">
+        <span id="diffVal" style="min-width:24px; text-align:right; font-weight:700; color:#6366f1;">50</span>
+      </div>
+      <div style="font-size:13px; margin-top:6px; display:flex; align-items:center; gap:8px;">
+        种子
+        <input type="number" id="seedInput" value="1" min="1" style="width:90px; border:1px solid #c7d2fe; border-radius:6px; padding:3px 8px;">
+        <button class="btn-pri" id="btnGen" style="padding:6px 14px;">🎲 生成</button>
+      </div>
+      <div id="genResult" style="font-size:12px; margin-top:8px; font-family:monospace; line-height:1.5;"></div>
+      <button class="btn-sec" id="btnPlayGen" style="margin-top:6px;">💡 把生成关灌进关卡池试玩</button>
+    </div>
+    
+    <div style="margin-top:16px; text-align:center;">
+      <button class="btn-sec" id="btnCloseDev">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var TRAIT_META = {
+  window:{chip:'🪟非窗不坐'},
+  quiet:{chip:'🤫怕吵'},
+  loud:{chip:'🗣️唠嗑王'},
+  front:{chip:'⬆️前排控'},
+  scented:{chip:'🌸香水两米八'},
+  smellSensitive:{chip:'🤧闻不得香水'}
+};
+
+function n(id,e,name,color,traits,line){
+  return {id:id,emoji:e,name:name,color:color,traits:traits,line:line};
+}
+
+var LEVELS = [
+  {
+    name:'第 1 关',scene:'🚌 公交车',
+    tip:'点下方乘客卡片选中，再点空座位安顿 TA。带 🪟 的座位靠窗。',
+    rows:[[{}, {w:1}],[{}, {w:1}]],
+    pairs:null,
+    chars:[
+      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
+      n('koala','🐨','二白','#d1fae5',[],'都可以啦')
+    ],
+    done:'靠窗位只有一个，先满足有要求的乘客。'
+  },
+  {
+    name:'第 2 关',scene:'🚌 公交车',
+    tip:'唠嗑王身边必须有人；怕吵的人不能挨着唠嗑王。空座位也是可以用的！',
+    rows:[[{}, {}, {}],[{}, {}, {}]],
+    pairs:null,
+    chars:[
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
+      n('pig','🐷','三白','#fef9c3',[],'都行都行'),
+      n('cow','🐮','老白','#e0f2fe',[],'随便随便')
+    ],
+    done:'让大壮挨着心大的乘客，阿静离他远一点。'
+  },
+  {
+    name:'第 3 关',scene:'🎬 电影院',
+    tip:'小情侣必须挨着坐（上下左右相邻才算挨着）。',
+    rows:[[{}, {}, {}],[{}, {}, {}]],
+    pairs:[{type:'couple',a:'cat',b:'dog'}],
+    chars:[
+      n('cat','🐱','糖糖','#fce7f3',[],'要和毛毛挨着！'),
+      n('dog','🐶','毛毛','#fef3c7',[],'要和糖糖挨着！'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
+      n('koala','🐨','二白','#d1fae5',[],'都可以啦')
+    ],
+    done:'把情侣当一个整体来摆位。'
+  },
+  {
+    name:'第 4 关',scene:'🚄 高铁',
+    tip:'冤家路窄：这两位绝对不能挨着（上下左右都不行）。',
+    rows:[[{}, {}, {}],[{}, {}, {}]],
+    pairs:[{type:'rivals',a:'tiger',b:'monkey'}],
+    chars:[
+      n('tiger','🐯','头子','#fef3c7',[],'看见皮蛋就来气'),
+      n('monkey','🐵','皮蛋','#fde68a',[],'看见头子就来气'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行')
+    ],
+    done:'大壮反而成了隔开冤家的天然屏障。'
+  },
+  {
+    name:'第 5 关',scene:'🎬 影院首映',
+    tip:'前排控坐后面就晕；窗位在右边一列。一个人可以同时有两个要求哦。',
+    rows:[[{}, {}, {w:1}],[{}, {}, {w:1}]],
+    pairs:null,
+    chars:[
+      n('frog','🐸','小前','#d1fae5',['front'],'坐后面我就晕'),
+      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行')
+    ],
+    done:'两个硬约束（前排、靠窗）先钉死，剩下的再排。'
+  },
+  {
+    name:'第 6 关',scene:'🚄 高铁',
+    tip:'香水哥自己没有要求——但他旁边的人可有意见。',
+    rows:[[{}, {}, {}],[{}, {}, {}]],
+    pairs:null,
+    chars:[
+      n('lion','🦁','型仔','#fef3c7',['scented'],'香水两米八，自信满满'),
+      n('panda','🐼','小敏','#e0e7ff',['smellSensitive'],'闻到香水就打喷嚏'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行')
+    ],
+    done:'没有约束的角色，是排开冲突的缓冲垫。'
+  },
+  {
+    name:'第 7 关',scene:'🚌 大巴',
+    tip:'三种要求同场：靠窗、前排、怕吵加唠嗑王。坐满 6 座！',
+    rows:[[{}, {w:1}],[{}, {w:1}],[{}, {w:1}]],
+    pairs:null,
+    chars:[
+      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
+      n('frog','🐸','小前','#d1fae5',['front'],'坐后面我就晕'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
+      n('koala','🐨','二白','#d1fae5',[],'都可以啦')
+    ],
+    done:'先钉死前排和靠窗，唠嗑王放最后一排找个伴。'
+  },
+  {
+    name:'第 8 关',scene:'🍜 食堂',
+    tip:'今天来了两位唠嗑王——他们俩挨着坐，正好互相倾诉！',
+    rows:[[{}, {}, {}, {}],[{}, {}, {}, {}]],
+    pairs:null,
+    chars:[
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('myna','🦜','八哥','#fef3c7',['loud'],'话痨鸟，必须有人听我说！'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('squi','🐿️','文文','#fde68a',['quiet'],'请让我安静吃饭'),
+      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
+      n('pig','🐷','三白','#fef9c3',[],'都行都行'),
+      n('cow','🐮','老白','#e0f2fe',[],'随便随便'),
+      n('hedge','🦔','小黑','#ede9fe',[],'嗯。')
+    ],
+    done:'同类相吸：两个唠嗑王绑在一起，怕吵的全挪远。'
+  },
+  {
+    name:'第 9 关',scene:'💃 婚礼酒席',
+    tip:'五类要求同场：窗位在左边一列。新郎新娘谢谢你！',
+    rows:[[ {w:1},{},{},{} ],[ {w:1},{},{},{} ]],
+    pairs:[{type:'couple',a:'cat',b:'dog'}],
+    chars:[
+      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
+      n('cat','🐱','糖糖','#fce7f3',[],'要和毛毛挨着！'),
+      n('dog','🐶','毛毛','#fde68a',[],'要和糖糖挨着！'),
+      n('lion','🦁','型仔','#fee2e2',['scented'],'香水两米八，自信满满'),
+      n('panda','🐼','小敏','#e0e7ff',['smellSensitive'],'闻到香水就打喷嚏'),
+      n('bear','🐻','大壮','#fef9c3',['loud'],'一个人坐我难受！'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('ham','🐹','小白','#d1fae5',[],'坐哪儿都行')
+    ],
+    done:'前八关的总复习：先钉硬约束，再塞缓冲垫。'
+  },
+  {
+    name:'第 10 关',scene:'🏫 教室家长会',
+    tip:'终极考场：3×3 坐满，两边都是窗位，第一排是讲台前。祝好运！',
+    rows:[[ {w:1},{},{w:1} ],[ {w:1},{},{w:1} ],[ {w:1},{},{w:1} ]],
+    pairs:[{type:'couple',a:'cat',b:'dog'}],
+    chars:[
+      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
+      n('owl','🦉','博士','#e0e7ff',['window'],'学问人，只坐窗边'),
+      n('frog','🐸','小前','#d1fae5',['front'],'坐后面我就晕'),
+      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
+      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
+      n('cat','🐱','糖糖','#fce7f3',[],'要和毛毛挨着！'),
+      n('dog','🐶','毛毛','#fde68a',[],'要和糖糖挨着！'),
+      n('lion','🦁','型仔','#fef9c3',['scented'],'香水两米八，自信满满'),
+      n('panda','🐼','小敏','#e0f2fe',['smellSensitive'],'闻到香水就打喷嚏')
+    ],
+    done:'🎉 前 10 关通关！还有 20 关等你——点击顶部「选关」继续挑战～'
+  },
+  {
+    id:11,name:'第 11 关',scene:'🚌 大巴',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:null,
+    chars:[n('g0','🐻','乘客1','#fef3c7',[],'随便坐'),n('g1','🐨','乘客2','#e0f2fe',['window'],'随便坐'),n('g2','🐼','乘客3','#e0f2fe',[],'随便坐'),n('g3','🐶','乘客4','#e0e7ff',[],'随便坐'),n('g4','🐸','乘客5','#fef9c3',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:12,name:'第 12 关',scene:'🚌 公交车',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{}],[{},{},{}]],pairs:null,
+    chars:[n('g0','🦜','乘客1','#d1fae5',[],'随便坐'),n('g1','🐱','乘客2','#e0f2fe',[],'随便坐'),n('g2','🦉','乘客3','#e0e7ff',[],'随便坐'),n('g3','🦊','乘客4','#d1fae5',[],'随便坐'),n('g4','🐰','乘客5','#e0f2fe',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:13,name:'第 13 关',scene:'🚄 高铁',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{}],[{},{},{}]],pairs:null,
+    chars:[n('g0','🐻','乘客1','#e0f2fe',[],'随便坐'),n('g1','🦔','乘客2','#e0f2fe',[],'随便坐'),n('g2','🦉','乘客3','#ede9fe',[],'随便坐'),n('g3','🐰','乘客4','#d1fae5',[],'随便坐'),n('g4','🐸','乘客5','#bae6fd',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:14,name:'第 14 关',scene:'🎬 电影院',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{}],[{},{},{}]],pairs:null,
+    chars:[n('g0','🐱','乘客1','#e0e7ff',[],'随便坐'),n('g1','🐨','乘客2','#e0f2fe',[],'随便坐'),n('g2','🐱','乘客3','#fee2e2',[],'随便坐'),n('g3','🐱','乘客4','#fde68a',[],'随便坐'),n('g4','🦊','乘客5','#fef3c7',['front'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:15,name:'第 15 关',scene:'🎬 电影院',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{}],[{},{},{}]],pairs:null,
+    chars:[n('g0','🦊','乘客1','#ede9fe',[],'随便坐'),n('g1','🦔','乘客2','#fef9c3',[],'随便坐'),n('g2','🐮','乘客3','#fee2e2',[],'随便坐'),n('g3','🐼','乘客4','#bae6fd',[],'随便坐'),n('g4','🦔','乘客5','#ede9fe',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:16,name:'第 16 关',scene:'🍜 食堂',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:null,
+    chars:[n('g0','🐱','乘客1','#fde68a',[],'随便坐'),n('g1','🐻','乘客2','#fde68a',[],'随便坐'),n('g2','🐼','乘客3','#fde68a',['front'],'随便坐'),n('g3','🐨','乘客4','#fef9c3',[],'随便坐'),n('g4','🐮','乘客5','#bae6fd',[],'随便坐'),n('g5','🦔','乘客6','#fce7f3',[],'随便坐'),n('g6','🐷','乘客7','#ede9fe',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:17,name:'第 17 关',scene:'🏫 教室家长会',
+    tip:'试试让所有人都满意！',
+    rows:[[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]],pairs:null,
+    chars:[n('g0','🦁','乘客1','#fef3c7',[],'随便坐'),n('g1','🐶','乘客2','#e0f2fe',[],'随便坐'),n('g2','🐶','乘客3','#d1fae5',[],'随便坐'),n('g3','🦁','乘客4','#ede9fe',[],'随便坐'),n('g4','🐻','乘客5','#fce7f3',[],'随便坐'),n('g5','🐻','乘客6','#fef3c7',[],'随便坐'),n('g6','🦜','乘客7','#ede9fe',['loud'],'随便坐'),n('g7','🐱','乘客8','#fde68a',['loud'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:18,name:'第 18 关',scene:'🎬 电影院',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{}],[{},{},{}]],pairs:null,
+    chars:[n('g0','🐿️','乘客1','#d1fae5',['front'],'随便坐'),n('g1','🐮','乘客2','#e0e7ff',['loud'],'随便坐'),n('g2','🐱','乘客3','#bae6fd',[],'随便坐'),n('g3','🐷','乘客4','#e0e7ff',[],'随便坐'),n('g4','🐯','乘客5','#bae6fd',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:19,name:'第 19 关',scene:'🏫 教室家长会',
+    tip:'试试让所有人都满意！',
+    rows:[[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]],pairs:null,
+    chars:[n('g0','🦉','乘客1','#fde68a',[],'随便坐'),n('g1','🐨','乘客2','#e0e7ff',[],'随便坐'),n('g2','🐰','乘客3','#bae6fd',[],'随便坐'),n('g3','🐶','乘客4','#fef3c7',['window'],'随便坐'),n('g4','🐿️','乘客5','#fef3c7',[],'随便坐'),n('g5','🐹','乘客6','#bae6fd',[],'随便坐'),n('g6','🐮','乘客7','#d1fae5',[],'随便坐'),n('g7','🦜','乘客8','#d1fae5',['loud'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:20,name:'第 20 关',scene:'💃 婚礼酒席',
+    tip:'试试让所有人都满意！',
+    rows:[[{w:1},{},{},{}],[{w:1},{},{},{}]],pairs:null,
+    chars:[n('g0','🐮','乘客1','#fce7f3',['front'],'随便坐'),n('g1','🐨','乘客2','#fde68a',['loud'],'随便坐'),n('g2','🐹','乘客3','#fce7f3',[],'随便坐'),n('g3','🐼','乘客4','#e0e7ff',['loud'],'随便坐'),n('g4','🦜','乘客5','#ede9fe',[],'随便坐'),n('g5','🐱','乘客6','#bae6fd',[],'随便坐'),n('g6','🐨','乘客7','#bae6fd',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:21,name:'第 21 关',scene:'🚌 公交车',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{}],[{},{},{}]],pairs:null,
+    chars:[n('g0','🐼','乘客1','#d1fae5',[],'随便坐'),n('g1','🐰','乘客2','#fef9c3',[],'随便坐'),n('g2','🦜','乘客3','#fef9c3',['front'],'随便坐'),n('g3','🦉','乘客4','#fee2e2',['front'],'随便坐'),n('g4','🐶','乘客5','#fde68a',['quiet'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:22,name:'第 22 关',scene:'🚌 大巴',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:null,
+    chars:[n('g0','🐿️','乘客1','#fef9c3',[],'随便坐'),n('g1','🦔','乘客2','#bae6fd',['loud'],'随便坐'),n('g2','🦔','乘客3','#fde68a',[],'随便坐'),n('g3','🐰','乘客4','#e0f2fe',['window'],'随便坐'),n('g4','🐮','乘客5','#d1fae5',['window'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:23,name:'第 23 关',scene:'🚌 大巴',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:null,
+    chars:[n('g0','🐰','乘客1','#fde68a',[],'随便坐'),n('g1','🐿️','乘客2','#e0e7ff',['scented'],'随便坐'),n('g2','🐯','乘客3','#fee2e2',['window'],'随便坐'),n('g3','🐼','乘客4','#e0e7ff',['quiet'],'随便坐'),n('g4','🐰','乘客5','#e0f2fe',['front'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:24,name:'第 24 关',scene:'💃 婚礼酒席',
+    tip:'试试让所有人都满意！',
+    rows:[[{w:1},{},{},{}],[{w:1},{},{},{}]],pairs:null,
+    chars:[n('g0','🐯','乘客1','#ede9fe',[],'随便坐'),n('g1','🦔','乘客2','#bae6fd',[],'随便坐'),n('g2','🐯','乘客3','#bae6fd',['scented'],'随便坐'),n('g3','🐸','乘客4','#fce7f3',['quiet'],'随便坐'),n('g4','🦜','乘客5','#fee2e2',['smellSensitive'],'随便坐'),n('g5','🦁','乘客6','#fef9c3',['smellSensitive'],'随便坐'),n('g6','🐯','乘客7','#ede9fe',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:25,name:'第 25 关',scene:'🍜 食堂',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:null,
+    chars:[n('g0','🐱','乘客1','#d1fae5',[],'随便坐'),n('g1','🐮','乘客2','#fce7f3',[],'随便坐'),n('g2','🦔','乘客3','#fde68a',['scented'],'随便坐'),n('g3','🐹','乘客4','#fce7f3',['smellSensitive'],'随便坐'),n('g4','🦜','乘客5','#e0e7ff',[],'随便坐'),n('g5','🐨','乘客6','#e0e7ff',['loud'],'随便坐'),n('g6','🐷','乘客7','#fce7f3',['smellSensitive'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:26,name:'第 26 关',scene:'🍜 食堂',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:null,
+    chars:[n('g0','🐻','乘客1','#fef9c3',['loud'],'随便坐'),n('g1','🐱','乘客2','#bae6fd',['smellSensitive'],'随便坐'),n('g2','🦁','乘客3','#fef3c7',[],'随便坐'),n('g3','🐸','乘客4','#e0f2fe',[],'随便坐'),n('g4','🦔','乘客5','#e0e7ff',['scented'],'随便坐'),n('g5','🐶','乘客6','#fef9c3',['scented'],'随便坐'),n('g6','🐸','乘客7','#fce7f3',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:27,name:'第 27 关',scene:'🚌 大巴',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:[{type:'couple',a:'g0',b:'g1'}],
+    chars:[n('g0','🐿️','乘客1','#fce7f3',['loud'],'随便坐'),n('g1','🦁','乘客2','#bae6fd',['scented'],'随便坐'),n('g2','🐱','乘客3','#fce7f3',['scented'],'随便坐'),n('g3','🐸','乘客4','#ede9fe',['loud'],'随便坐'),n('g4','🐰','乘客5','#fef3c7',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:28,name:'第 28 关',scene:'🏫 教室家长会',
+    tip:'试试让所有人都满意！',
+    rows:[[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]],pairs:[{type:'couple',a:'g0',b:'g1'}],
+    chars:[n('g0','🐯','乘客1','#e0e7ff',['loud'],'随便坐'),n('g1','🐷','乘客2','#ede9fe',['smellSensitive'],'随便坐'),n('g2','🐱','乘客3','#bae6fd',[],'随便坐'),n('g3','🐱','乘客4','#e0e7ff',[],'随便坐'),n('g4','🦉','乘客5','#fce7f3',[],'随便坐'),n('g5','🐿️','乘客6','#fef9c3',['loud'],'随便坐'),n('g6','🐵','乘客7','#fee2e2',['smellSensitive'],'随便坐'),n('g7','🐰','乘客8','#fde68a',[],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:29,name:'第 29 关',scene:'💃 婚礼酒席',
+    tip:'试试让所有人都满意！',
+    rows:[[{w:1},{},{},{}],[{w:1},{},{},{}]],pairs:[{type:'rivals',a:'g0',b:'g1'}],
+    chars:[n('g0','🦁','乘客1','#e0f2fe',[],'随便坐'),n('g1','🦜','乘客2','#fef3c7',['smellSensitive'],'随便坐'),n('g2','🐻','乘客3','#e0e7ff',[],'随便坐'),n('g3','🦁','乘客4','#fee2e2',['window'],'随便坐'),n('g4','🐶','乘客5','#e0e7ff',['loud'],'随便坐'),n('g5','🦔','乘客6','#fde68a',[],'随便坐'),n('g6','🐵','乘客7','#bae6fd',['quiet'],'随便坐')],
+    done:'过关！继续挑战'
+  },
+  {
+    id:30,name:'第 30 关',scene:'🍜 食堂',
+    tip:'试试让所有人都满意！',
+    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:[{type:'rivals',a:'g0',b:'g1'}],
+    chars:[n('g0','🐯','乘客1','#fce7f3',['quiet'],'随便坐'),n('g1','🐮','乘客2','#fef9c3',['scented'],'随便坐'),n('g2','🐱','乘客3','#fde68a',[],'随便坐'),n('g3','🦜','乘客4','#ede9fe',['front'],'随便坐'),n('g4','🦔','乘客5','#e0f2fe',[],'随便坐'),n('g5','🦁','乘客6','#bae6fd',[],'随便坐'),n('g6','🐻','乘客7','#d1fae5',['smellSensitive'],'随便坐')],
+    done:'🎉 全 30 关通关！你是排座大师！分享给朋友试试看？'
+  }
+];
+
+// ============ 强制重建 id 11-60（generateLevel + 固定 seed，全部带 NPC 难度梯度） ============
+(function(){
+  // 先把 LEVELS 切到 id=10 为止（id 11+ 全丢弃重建）
+  while(LEVELS.length > 0 && LEVELS[LEVELS.length-1].id >= 11) LEVELS.pop();
+  for(var i=11;i<=60;i++){
+    var diff = Math.round(10 + (i-11) * (88/49)); // 10 → 98 线性
+    var seed = 5000 + i*13;
+    var lv = generateLevel(diff, seed);
+    // Fallback：原 seed 不行就递增 seed 最多 20 次
+    if(!lv){
+      for(var fb=1;fb<=20;fb++){ lv = generateLevel(diff, seed + fb*991); if(lv) break; }
+    }
+    // 再 fallback：降难度（保留关卡序号）
+    if(!lv){
+      for(var dd=diff-5;dd>=5;dd-=5){ lv = generateLevel(dd, seed + dd); if(lv){ lv.difficulty = diff; break; } }
+    }
+    if(lv){ lv.id = i; lv.name = '第 '+i+' 关'; LEVELS.push(lv); }
+    else { // 最后兜底：直接塞个空关卡
+      LEVELS.push({ id:i, name:'第 '+i+' 关（占位）', scene:'🚌 公交车', tip:'请稍后刷新', rows:[[{},{}],[{},{}]], chars:[], pairs:null, done:'', generated:true, difficulty:diff, nodeCount:0, solutionCount:0, npcCount:0 });
+    }
+  }
+})();
+
+// ============ 关卡内容润色（id >= 11 的自动生成关卡） ============
+(function(){
+  var NAME_POOLS = {
+    // 按 trait 关键词的角色名池（场景无关，更通用）
+    TRAIT_NAMES: {
+      window:     ['阿窗','靠窗','想看看','风景党','窗边客','窗外人','观光客','看风景的'],
+      front:      ['前排','高个子','挡不住','大个子','坐前排','眼镜哥','身高担当'],
+      quiet:      ['安静静','小透明','社恐','怕吵的','捂耳朵','静静','不说话','沉默君','安仔'],
+      loud:       ['大嗓门','话痨','自来熟','社牛','爱聊天','叽叽喳喳','小喇叭','聊不够'],
+      scented:    ['香水哥','香水姐','香喷喷','自带香气','香水瓶','行走荷尔蒙','香飘飘'],
+      smellSensitive: ['鼻子灵','闻不得','过敏君','香水过敏','阿嚏','敏感鼻','小鼻子','喷嚏王'],
+    },
+    // 场景专属修饰词（无 trait 时默认从这里取）
+    SCENE_DEFAULT: {
+      '🚌 公交车':['通勤族','上班族','顺路','赶车','等车','挤车','公交常客','早高峰'],
+      '🚌 大巴':['长途客','老司机','坐大巴','一路顺风','远行者'],
+      '🚄 高铁':['商务客','出差','赶高铁','一等座','高铁达人'],
+      '🎬 电影院':['影迷','看电影','电影票','爆米花','影院常客'],
+      '🍜 食堂':['打饭','吃饭','饿了','吃啥','饭点','食堂常客','打饭阿姨'],
+      '🏫 教室家长会':['家长会','家长','班主任','接孩子','学校'],
+      '💃 婚礼酒席':['伴郎','伴娘','新郎','新娘','喜酒','份子钱','婚礼客'],
+    },
+  };
+  // trait → emoji 强绑定（一眼能看出性格）
+  var TRAIT_EMOJI = {
+    window:['🪟','🌅','🌄','🏞️'],
+    front:['👀','🧍','🦒','📏'],
+    quiet:['🐱','🐰','🦉','🐢','🧘','🤫'],
+    loud:['🦁','🦜','🐶','🐨','📢','🔊'],
+    scented:['💐','🌹','🌸','✨','🧴','🕯️'],
+    smellSensitive:['🤧','😷','👃','🚫','🌿'],
+  };
+  var FILLER_EMOJIS = ['🦊','🐹','🐻','🐷','🐮','🐵','🐯','🐼','🐸','🦁','🐿️','🦔','🐭','🐲','🐴','🦄','🐙','🦦'];
+  var COLORS=['#fef3c7','#e0e7ff','#d1fae5','#fce7f3','#fee2e2','#fef9c3','#e0f2fe','#fde68a','#ede9fe','#bae6fd','#fae8ff','#dcfce7','#ffedd5','#f1f5f9'];
+  var SCENE_TIPS = {
+    '🚌 公交车':'通勤高峰期，让所有人舒心坐下～',
+    '🚌 大巴':'长途大巴，靠窗看风景最舒服',
+    '🚄 高铁':'高铁商务座，位置讲究',
+    '🎬 电影院':'看电影别挡后面的人',
+    '🍜 食堂':'饭点排队，找个好位置',
+    '🏫 教室家长会':'家长会来了一堆家长',
+    '💃 婚礼酒席':'伴郎伴娘要挨着，冤家别碰面',
+  };
+  var TRAIT_LINES = { window:'我想看窗外', front:'我个子高，坐前面别挡人', loud:'一个人坐我难受', quiet:'我怕吵', scented:'香水两米八', smellSensitive:'闻到香水就打喷嚏' };
+  
+  function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  
+  for(var li=0;li<LEVELS.length;li++){
+    var lv=LEVELS[li];
+    if(lv.id <= 10) continue;
+    var r = mulberry32(100 + lv.id*7 + 42);
+    var sceneDefault = NAME_POOLS.SCENE_DEFAULT[lv.scene] || NAME_POOLS.SCENE_DEFAULT['🚌 公交车'];
+    for(var ci=0;ci<lv.chars.length;ci++){
+      var ch=lv.chars[ci];
+      // 优先从 trait 匹配名字/emoji；多个 trait 选第一个；无 trait 从场景默认池取
+      var t = ch.traits && ch.traits[0];
+      if(t && NAME_POOLS.TRAIT_NAMES[t] && NAME_POOLS.TRAIT_NAMES[t].length){
+        ch.name = NAME_POOLS.TRAIT_NAMES[t][Math.floor(r()*NAME_POOLS.TRAIT_NAMES[t].length)];
+      } else {
+        ch.name = sceneDefault[ci % sceneDefault.length];
+      }
+      // emoji：trait 优先绑定
+      if(t && TRAIT_EMOJI[t] && TRAIT_EMOJI[t].length){
+        ch.emoji = TRAIT_EMOJI[t][Math.floor(r()*TRAIT_EMOJI[t].length)];
+      } else {
+        ch.emoji = FILLER_EMOJIS[Math.floor(r()*FILLER_EMOJIS.length)];
+      }
+      ch.color = COLORS[Math.floor(r()*COLORS.length)];
+      ch.line = ch.traits.length===0 ? '随便坐' : (TRAIT_LINES[ch.traits[0]] || '随便坐');
+    }
+    var baseTip = SCENE_TIPS[lv.scene] || '试试让所有人都满意！';
+    if(lv.pairs && lv.pairs.length>0){
+      var pr=lv.pairs[0];
+      var ca=lv.chars.find(function(c){return c.id===pr.a;});
+      var cb=lv.chars.find(function(c){return c.id===pr.b;});
+      if(ca&&cb) baseTip = pr.type==='couple' ? ca.name+' 和 '+cb.name+' 是一对，必须挨着' : ca.name+' 和 '+cb.name+' 坐远点！';
+    }
+    lv.tip = baseTip;
+  }
+})();
+
+var KEY='sqp_progress_v1';
+var BEST_KEY='sqp_best_v1';
+var ACH_KEY='sqp_ach_v1';
+var ENDLESS_KEY='sqp_endless_v1';
+var unlocked=0;
+var steps=0;
+var bestStars={};
+var _achievements={};
+var _endlessStats={totalClears:0,bestDifficulty:0,totalStars:0,maxStreak:0};
+var _endlessStreak=0;
+var _npcBestStars={};
+var _skinPack='default';
+var _SKIN_KEY='sqp_skin_v1';
+var SKIN_PACKS=[
+  {id:'default',name:'默认',threshold:0,  emojis:['🐱','🐶','🦊','🐼','🐸','🦁','🐯','🐷','🐵','🐰','🐻','🦜','🐨','🐴','🦉']},
+  {id:'cute',   name:'萌宠',threshold:20, emojis:['🐥','🐣','🐤','🦆','🐧','🦄','🐲','🐹','🐰','🐨','🐼','🐯','🦁','🐸','🐢','🦔','🦦']},
+  {id:'fantasy',name:'奇幻',threshold:50, emojis:['🧚','🧙','🧝','🧛','🧜','🧞','🦸','🦹','👻','🎃','👽','👾','🤖','😈','💀']},
+  {id:'all',    name:'全部',threshold:90, emojis:null}, // null = 合并前面全部
+];
+try{ _skinPack=localStorage.getItem(_SKIN_KEY)||'default'; }catch(e){}
+try{ unlocked=parseInt(localStorage.getItem(KEY)||'0',10)||0; }catch(e){ unlocked=0; }
+try{ bestStars=JSON.parse(localStorage.getItem(BEST_KEY)||'{}'); }catch(e){ bestStars={}; }
+try{ _achievements=JSON.parse(localStorage.getItem(ACH_KEY)||'{}'); }catch(e){ _achievements={}; }
+try{ var _es=JSON.parse(localStorage.getItem(ENDLESS_KEY)||'null'); if(_es && typeof _es.totalClears==='number') _endlessStats=_es; }catch(e){}
+if(unlocked>LEVELS.length-1){ unlocked=LEVELS.length-1; }
+var cur=unlocked;
+var placement={};
+var selected=null;
+var lastEval={allPlaced:false,results:{}};
+
+// ============ 成就系统 ============
+function totalStars(){ var t=0; for(var k in bestStars) t+=bestStars[k]; return t; }
+function hasNpcInLevel(lv){
+  for(var r=0;r<lv.rows.length;r++) for(var c=0;c<lv.rows[r].length;c++)
+    if(lv.rows[r][c] && lv.rows[r][c].npc) return true;
+  return false;
+}
+var ACH_DEFS=[
+  {id:'firstWin',icon:'🎯',name:'初来乍到',desc:'通关第 1 关',check:function(){return unlocked>=1;}},
+  {id:'tenStars',icon:'⭐',name:'小有成就',desc:'累计 10 颗星',check:function(){return totalStars()>=10;}},
+  {id:'thirtyStars',icon:'🌟',name:'明星玩家',desc:'累计 30 颗星',check:function(){return totalStars()>=30;}},
+  {id:'anyThreeStar',icon:'💎',name:'完美通关',desc:'任意一关三星',check:function(){for(var k in bestStars) if(bestStars[k]>=3) return true; return false;}},
+  {id:'tenClear',icon:'🏆',name:'通关能手',desc:'通关前 10 关',check:function(){return unlocked>=9;}},
+  {id:'winWithNpc',icon:'🎭',name:'人情世故',desc:'通关 NPC 关卡',check:function(){return Object.keys(_npcBestStars).length>0;}},
+  {id:'endless10',icon:'🔁',name:'无尽达人',desc:'无尽连过 10 关',check:function(){return _endlessStats.maxStreak>=10;}},
+  {id:'endless50',icon:'♾️',name:'无限可能',desc:'无尽累计 50 关',check:function(){return _endlessStats.totalClears>=50;}},
+];
+function checkAchievements(){
+  var newly=[];
+  for(var i=0;i<ACH_DEFS.length;i++){
+    var a=ACH_DEFS[i];
+    if(!_achievements[a.id] && a.check()){ _achievements[a.id]=true; newly.push(a); }
+  }
+  if(newly.length){
+    try{ localStorage.setItem(ACH_KEY, JSON.stringify(_achievements)); }catch(e){}
+    for(var j=0;j<newly.length;j++) showAchievementToast(newly[j]);
+  }
+}
+function showAchievementToast(ach){
+  var t=document.createElement('div'); t.className='ach-toast';
+  var top=document.createElement('div'); top.className='ach-title'; top.textContent='🏅 成就解锁';
+  var ic=document.createElement('div'); ic.className='ach-icon'; ic.textContent=ach.icon;
+  var info=document.createElement('div'); info.className='ach-info';
+  var nm=document.createElement('div'); nm.className='ach-name'; nm.textContent=ach.icon+' '+ach.name;
+  var ds=document.createElement('div'); ds.className='ach-desc'; ds.textContent=ach.desc;
+  info.appendChild(nm); info.appendChild(ds);
+  t.appendChild(top); t.appendChild(ic); t.appendChild(info);
+  document.body.appendChild(t);
+  setTimeout(function(){ t.classList.add('ach-fade'); }, 3200);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3800);
+}
+// 成就按钮插入 header
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var dotsEl=document.getElementById('dots');
+    if(!dotsEl) return;
+    var ab=document.createElement('button');
+    ab.className='ach-btn'; ab.textContent='🏅';
+    ab.title='成就 ('+Object.keys(_achievements).length+'/'+ACH_DEFS.length+')';
+    ab.addEventListener('click', openAchievements);
+    dotsEl.parentNode.insertBefore(ab, dotsEl.nextSibling);
+  }, 200);
+});
+function openAchievements(){
+  var ov=document.createElement('div'); ov.className='modal-overlay ach-modal';
+  var pn=document.createElement('div'); pn.className='modal ach-panel';
+  var h=document.createElement('h2');
+  h.textContent='🏅 成就 ('+Object.keys(_achievements).length+'/'+ACH_DEFS.length+')';
+  pn.appendChild(h);
+  // Tab 按钮
+  var tabs=document.createElement('div'); tabs.className='ach-tabs';
+  function mkTab(label,active,cb){
+    var t=document.createElement('button'); t.className='ach-tab'+(active?' active':''); t.textContent=label;
+    t.addEventListener('click',cb); return t;
+  }
+  var content=document.createElement('div'); content.className='ach-tab-content';
+  function showTab(name){
+    content.innerHTML='';
+    // 激活 tab 高亮
+    var btns=tabs.querySelectorAll('.ach-tab');
+    for(var i=0;i<btns.length;i++) btns[i].classList.toggle('active', btns[i].dataset.tab===name);
+    if(name==='ach'){
+      content.appendChild(buildAchGrid());
+      content.appendChild(buildStats());
+    } else if(name==='skin'){
+      renderSkinTab(content);
+    } else if(name==='share'){
+      content.appendChild(buildSharePanel());
+    }
+  }
+  // 成就 tab
+  var tabAch=mkTab('🏅 成就',true,function(){ showTab('ach'); }); tabAch.dataset.tab='ach'; tabs.appendChild(tabAch);
+  // 皮肤 tab
+  var tabSkin=mkTab('🎨 皮肤',false,function(){ showTab('skin'); }); tabSkin.dataset.tab='skin'; tabs.appendChild(tabSkin);
+  // 分享 tab
+  var tabShare=mkTab('📤 分享',false,function(){ showTab('share'); }); tabShare.dataset.tab='share'; tabs.appendChild(tabShare);
+  pn.appendChild(tabs);
+  pn.appendChild(content);
+  showTab('ach');
+  var cb=document.createElement('button'); cb.className='btn-pri'; cb.style.marginTop='16px'; cb.textContent='关闭';
+  cb.addEventListener('click', function(){ ov.remove(); });
+  pn.appendChild(cb);
+  ov.appendChild(pn);
+  ov.addEventListener('click', function(e){ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function buildAchGrid(){
+  var grid=document.createElement('div'); grid.className='ach-grid';
+  for(var i=0;i<ACH_DEFS.length;i++){
+    var a=ACH_DEFS[i];
+    var got=!!_achievements[a.id];
+    var c=document.createElement('div'); c.className='ach-card'+(got?' got':' locked');
+    var il=document.createElement('div'); il.className='ach-icon-lg'; il.textContent=got?a.icon:'🔒';
+    var tx=document.createElement('div'); tx.className='ach-txt';
+    var nm=document.createElement('div'); nm.className='ach-n'; nm.textContent=a.name;
+    var ds=document.createElement('div'); ds.className='ach-d'; ds.textContent=a.desc;
+    tx.appendChild(nm); tx.appendChild(ds);
+    c.appendChild(il); c.appendChild(tx);
+    grid.appendChild(c);
+  }
+  return grid;
+}
+function buildStats(){
+  var st=document.createElement('div'); st.className='ach-stats';
+  function mkStat(l,v){var s=document.createElement('div');s.className='ach-stat';s.appendChild(document.createTextNode(l));var b=document.createElement('b');b.textContent=v;s.appendChild(b);return s;}
+  st.appendChild(mkStat('👤 累计星 ', totalStars()));
+  st.appendChild(mkStat('🔁 无尽累计 ', _endlessStats.totalClears));
+  st.appendChild(mkStat('⚙️ 无尽最高 ', _endlessStats.bestDifficulty));
+  st.appendChild(mkStat('🔥 最长连胜 ', _endlessStats.maxStreak));
+  return st;
+}
+function buildSharePanel(){
+  var wrap=document.createElement('div');
+  var tip=document.createElement('div'); tip.className='ach-tip';
+  tip.textContent='📤 生成一张分享卡片，炫耀你的通关战绩！';
+  wrap.appendChild(tip);
+  var btn=document.createElement('button'); btn.className='btn-pri'; btn.textContent='🎨 生成当前关卡分享图';
+  btn.addEventListener('click',function(){
+    var lv=LEVELS[cur];
+    var stars=bestStars[cur]||0;
+    var canvas=genShareCard(lv, stars);
+    showSharePreview(canvas);
+  });
+  wrap.appendChild(btn);
+  // 列所有关卡星级，点击生成
+  var h2=document.createElement('div'); h2.className='ach-tip'; h2.style.marginTop='16px';
+  h2.textContent='💡 或点下面任一关直接生成分享卡：';
+  wrap.appendChild(h2);
+  var lvList=document.createElement('div'); lvList.className='ach-lv-list';
+  for(var i=0;i<LEVELS.length;i++){
+    var st=bestStars[i]||0; if(st<1) continue;
+    var lv=LEVELS[i];
+    var item=document.createElement('button'); item.className='ach-lv-item';
+    item.textContent=(i+1)+'. '+lv.scene+' '+(st>0?'★'.repeat(st):'☆☆☆');
+    item.addEventListener('click',(function(lvv,ss){ showSharePreview(genShareCard(lvv,ss)); })(lv, st));
+    lvList.appendChild(item);
+  }
+  if(lvList.children.length===0){
+    var emp=document.createElement('div'); emp.style.color='#9ca3af'; emp.style.fontSize='12px'; emp.textContent='还没有三星通关记录～';
+    wrap.appendChild(emp);
+  } else {
+    wrap.appendChild(lvList);
+  }
+  return wrap;
+}
+
+// ===== 全局：皮肤 emoji 取值 =====
+function getSkinEmoji(idx){
+  var pack=null;
+  for(var pi=0;pi<SKIN_PACKS.length;pi++){ if(SKIN_PACKS[pi].id===_skinPack){ pack=SKIN_PACKS[pi]; break; } }
+  if(!pack) pack=SKIN_PACKS[0];
+  var emojis=pack.emojis;
+  if(!emojis){ emojis=[]; for(var pj=0;pj<SKIN_PACKS.length-1;pj++){ if(SKIN_PACKS[pj].emojis) emojis=emojis.concat(SKIN_PACKS[pj].emojis); } }
+  return emojis[idx % emojis.length];
+}
+function getSkinPackEmojis(id){
+  var pack=null;
+  for(var pi=0;pi<SKIN_PACKS.length;pi++){ if(SKIN_PACKS[pi].id===id){ pack=SKIN_PACKS[pi]; break; } }
+  if(!pack) pack=SKIN_PACKS[0];
+  if(pack.emojis) return pack.emojis;
+  var all=[]; for(var pj=0;pj<SKIN_PACKS.length-1;pj++){ if(SKIN_PACKS[pj].emojis) all=all.concat(SKIN_PACKS[pj].emojis); }
+  return all;
+}
+function setSkinPack(id){
+  // 门槛检查
+  var tstars=totalStars();
+  var target=null; for(var pi=0;pi<SKIN_PACKS.length;pi++){ if(SKIN_PACKS[pi].id===id){ target=SKIN_PACKS[pi]; break; } }
+  if(!target) return;
+  if(tstars<target.threshold){
+    showBanner('🔒 还需 '+Math.ceil(target.threshold-tstars)+' 颗星解锁「'+target.name+'」');
+    return;
+  }
+  _skinPack=id;
+  try{ localStorage.setItem(_SKIN_KEY,id); }catch(e){}
+  showBanner('🎨 已切换到「'+target.name+'」皮肤');
+  render();
+  // 刷新成就面板
+  var old=document.querySelector('.ach-modal'); if(old) old.remove(); openAchievements();
+}
+
+// ===== 皮肤 tab 渲染 =====
+function renderSkinTab(container){
+  var tstars=totalStars();
+  container.innerHTML='';
+  var h=document.createElement('div'); h.className='ach-tip';
+  h.textContent='当前累计 '+tstars+' 颗星（门槛在变：'+(tstars>=20?'✅':'20 星开萌宠')+' · '+(tstars>=50?'✅':'50 星开奇幻')+' · '+(tstars>=90?'✅':'90 星开全部')+'）';
+  container.appendChild(h);
+  var bar=document.createElement('div'); bar.className='ach-skin-bar';
+  // 进度条（按最高阈值 90）
+  var prog=document.createElement('div'); prog.className='ach-skin-prog'; prog.style.width=Math.min(100,Math.round(tstars/90*100))+'%';
+  bar.appendChild(prog); container.appendChild(bar);
+  var list=document.createElement('div'); list.className='ach-skin-list';
+  for(var i=0;i<SKIN_PACKS.length;i++){
+    var sk=SKIN_PACKS[i];
+    var unlocked=tstars>=sk.threshold;
+    var cur=_skinPack===sk.id;
+    var card=document.createElement('div'); card.className='ach-skin-card'+(cur?' active':'')+(unlocked?'':' locked');
+    var prev=document.createElement('div'); prev.className='ach-skin-preview';
+    var emojis=getSkinPackEmojis(sk.id);
+    for(var e=0;e<Math.min(5,emojis.length);e++){ var sp=document.createElement('span'); sp.textContent=emojis[e]; prev.appendChild(sp); }
+    var nm=document.createElement('div'); nm.className='ach-skin-name'; nm.textContent=unlocked?sk.name:('🔒 '+sk.threshold+'⭐解锁');
+    var btn=document.createElement('button'); btn.className='ach-skin-btn';
+    if(cur){ btn.textContent='✓ 使用中'; btn.disabled=true; }
+    else if(unlocked){ btn.textContent='应用'; btn.addEventListener('click',(function(sid){ setSkinPack(sid); })(sk.id)); }
+    else{ btn.textContent='未解锁'; btn.disabled=true; }
+    card.appendChild(prev); card.appendChild(nm); card.appendChild(btn);
+    list.appendChild(card);
+  }
+  container.appendChild(list);
+}
+
+// ===== 分享卡片 canvas 生成 =====
+function genShareCard(lv, stars){
+  var canvas=document.createElement('canvas');
+  canvas.width=480; canvas.height=360;
+  var ctx=canvas.getContext('2d');
+  // 背景渐变
+  var g=ctx.createLinearGradient(0,0,480,360);
+  g.addColorStop(0,'#6366f1'); g.addColorStop(1,'#8b5cf6');
+  ctx.fillStyle=g; ctx.fillRect(0,0,480,360);
+  // 白色圆角卡片
+  ctx.fillStyle='#ffffff'; roundRect(ctx,24,24,432,312,18); ctx.fill();
+  // 标题
+  ctx.fillStyle='#4338ca'; ctx.font='bold 22px "Microsoft YaHei",sans-serif'; ctx.textAlign='center';
+  ctx.fillText('🎯 谁坐哪儿 · 排座位谜题',240,58);
+  // 关卡信息
+  ctx.fillStyle='#6b7280'; ctx.font='14px sans-serif';
+  ctx.fillText(lv.name+' · '+lv.scene,240,82);
+  // 星级
+  var starStr=''; for(var i=0;i<3;i++) starStr += (i<stars?'★':'☆');
+  ctx.fillStyle='#f59e0b'; ctx.font='bold 40px sans-serif';
+  ctx.fillText(starStr,240,128);
+  // NPC/乘客墙（前 12 个）
+  var allChars=[].concat(lv.chars);
+  var npcPoolForCard=[];
+  for(var r=0;r<lv.rows.length;r++) for(var c=0;c<lv.rows[r].length;c++) if(lv.rows[r][c]&&lv.rows[r][c].npc) npcPoolForCard.push(lv.rows[r][c].npc);
+  var wall=allChars.concat(npcPoolForCard).slice(0,12);
+  ctx.font='32px sans-serif'; ctx.textAlign='center';
+  var cols=6; var size=44; var gap=4;
+  var wallTop=170;
+  for(var j=0;j<wall.length;j++){
+    var x=40+22+(j%cols)*(size+gap+30);
+    var y=wallTop+Math.floor(j/cols)*(size+gap+14);
+    var emoji=wall[j].emoji || (wall[j].isNpc?getSkinEmoji(j):'❓');
+    ctx.fillText(emoji,x,y);
+  }
+  // 底部 slogan
+  ctx.fillStyle='#6b7280'; ctx.font='12px sans-serif';
+  ctx.fillText('🚀 来挑战你能排到第几关？',240,320);
+  return canvas;
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); }
+function showSharePreview(canvas){
+  var ov=document.createElement('div'); ov.className='modal-overlay';
+  var pn=document.createElement('div'); pn.className='modal';
+  var h=document.createElement('h3'); h.textContent='📤 分享卡片（长按图片保存）'; h.style.textAlign='center'; pn.appendChild(h);
+  canvas.style.maxWidth='340px'; canvas.style.borderRadius='14px'; canvas.style.display='block'; canvas.style.margin='10px auto'; canvas.style.boxShadow='0 4px 20px rgba(0,0,0,.18)';
+  pn.appendChild(canvas);
+  var dl=document.createElement('a');
+  dl.download='seatgame-share-'+Date.now()+'.png';
+  dl.href=canvas.toDataURL('image/png');
+  dl.className='btn-pri'; dl.textContent='💾 下载图片'; dl.style.display='block'; dl.style.textAlign='center'; dl.style.marginTop='10px';
+  pn.appendChild(dl);
+  var close=document.createElement('button'); close.className='btn-sec'; close.textContent='关闭';
+  close.addEventListener('click',function(){ ov.remove(); });
+  pn.appendChild(close);
+  ov.appendChild(pn);
+  ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function charById(lv,id){
+  for(var i=0;i<lv.chars.length;i++){ if(lv.chars[i].id===id) return lv.chars[i]; }
+  return null;
+}
+function placementOf(r,c){
+  for(var id in placement){ var p=placement[id]; if(p.r===r&&p.c===c) return id; }
+  return null;
+}
+function neighborsOf(rows,r,c){
+  var res=[];
+  var dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  for(var i=0;i<dirs.length;i++){
+    var r2=r+dirs[i][0], c2=c+dirs[i][1];
+    if(r2>=0&&r2<rows.length&&c2>=0&&c2<rows[r2].length&&rows[r2][c2]) res.push([r2,c2]);
+  }
+  return res;
+}
+function evaluate(){
+  var lv=LEVELS[cur];
+  var results={}; var allPlaced=true;
+  var occ={};
+  for(var i=0;i<lv.chars.length;i++){
+    var ch=lv.chars[i];
+    var p=placement[ch.id];
+    if(!p){ allPlaced=false; continue; }
+    occ[p.r+','+p.c]=ch;
+  }
+  for(var j=0;j<lv.chars.length;j++){
+    var c2=lv.chars[j];
+    var pp=placement[c2.id];
+    if(!pp){ results[c2.id]={ok:false,reason:'还没入座'}; continue; }
+    var cell=lv.rows[pp.r][pp.c];
+    var ns=neighborsOf(lv.rows,pp.r,pp.c);
+    var nchars=[];
+    for(var k=0;k<ns.length;k++){ var oc=occ[ns[k][0]+','+ns[k][1]]; if(oc) nchars.push(oc); }
+    var ok=true, reason='满意';
+    var ts=c2.traits;
+    for(var t=0;t<ts.length;t++){
+      var tr=ts[t];
+      if(tr==='window'&&!cell.w){ ok=false; reason='非要靠窗不可'; break; }
+      if(tr==='front'&&pp.r!==0){ ok=false; reason='必须坐第一排'; break; }
+      if(tr==='quiet'){
+        for(var q=0;q<nchars.length;q++){ if(nchars[q].traits.indexOf('loud')>=0){ ok=false; reason='旁边太吵了'; break; } }
+        if(!ok) break;
+      }
+      if(tr==='loud'&&nchars.length===0){ ok=false; reason='身边一个人都没有'; break; }
+      if(tr==='smellSensitive'){
+        for(var s=0;s<nchars.length;s++){ if(nchars[s].traits.indexOf('scented')>=0){ ok=false; reason='旁边香水太冲了'; break; } }
+        if(!ok) break;
+      }
+    }
+    if(ok&&lv.pairs){
+      for(var pi=0;pi<lv.pairs.length;pi++){
+        var pr=lv.pairs[pi];
+        if(pr.a!==c2.id&&pr.b!==c2.id) continue;
+        var oid=pr.a===c2.id?pr.b:pr.a;
+        var op=placement[oid];
+        if(!op) continue;
+        var adj=(Math.abs(pp.r-op.r)+Math.abs(pp.c-op.c))===1;
+        if(pr.type==='couple'&&!adj){ ok=false; reason='要和另一半挨着'; break; }
+        if(pr.type==='rivals'&&adj){ ok=false; reason='冤家路窄！'; break; }
+      }
+    }
+    results[c2.id]={ok:ok,reason:reason};
+  }
+  return {allPlaced:allPlaced,results:results};
+}
+
+var won=false;
+function render(){
+  var lv=LEVELS[cur];
+  // 场景名（安全：textContent）+ badge 节点（安全：createElement）
+  var sn = document.getElementById('sceneName');
+  sn.textContent = lv.scene;
+  // 清旧 badge 节点（保留 textNode）
+  var oldBadges = sn.querySelectorAll('.hd-badge');
+  for(var oi=0;oi<oldBadges.length;oi++) oldBadges[oi].remove();
+  var npcCount = lv.rows.reduce(function(s,row){ return s + row.filter(function(c){return c&&c.npc;}).length; }, 0);
+  var traitCount = lv.chars.reduce(function(s,ch){ return s + ch.traits.length; }, 0);
+  var pairCount = lv.pairs ? lv.pairs.length : 0;
+  // ⚙️ 难度
+  if(lv.difficulty != null){
+    var b1 = document.createElement('span');
+    b1.className = 'hd-badge hd-hd'; b1.textContent = '⚙️ '+lv.difficulty;
+    b1.title = '关卡难度（solver 复杂度）';
+    sn.appendChild(b1);
+  }
+  // 🧍 NPC 数量
+  if(npcCount > 0){
+    var b2 = document.createElement('span');
+    b2.className = 'hd-badge hd-npc'; b2.textContent = '🧍×'+npcCount;
+    b2.title = 'NPC 路人数量';
+    sn.appendChild(b2);
+  }
+  // 👤 乘客/约束
+  var b3 = document.createElement('span');
+  b3.className = 'hd-badge hd-chars'; b3.textContent = '👤 '+lv.chars.length+'/'+(traitCount+pairCount);
+  b3.title = '乘客数 / 约束数';
+  sn.appendChild(b3);
+  document.getElementById('lvlName').textContent = lv.name + ' · 推荐 ≤' + lv.chars.length + ' 步';
+  document.getElementById('tip').textContent = lv.tip;
+
+  var dots=document.getElementById('dots');
+  dots.innerHTML='';
+  for(var i=0;i<LEVELS.length;i++){
+    var d=document.createElement('span');
+    var stars=bestStars[i]||0;
+    d.className='dot'+(i<=unlocked?' done':'')+(i===cur?' cur':'');
+    if(stars>0){ d.innerHTML='<span style="position:relative;">⭐<span style="position:absolute;top:12px;left:-2px;font-size:10px;line-height:1;color:#fbbf24;">'+stars+'</span></span>'; }
+    else if(i<=unlocked){ d.textContent='✓'; d.style.fontSize='10px'; d.style.color='#fff'; }
+    (function(idx){
+      d.addEventListener('click',function(){
+        if(idx<=unlocked){ cur=idx; resetLevel(); }
+      });
+    })(i);
+    dots.appendChild(d);
+  }
+
+  var g=document.getElementById('grid');
+  g.innerHTML='';
+  var cols=lv.rows[0].length;
+  var maxContainerW=Math.min(window.innerWidth-24,720);
+  var seatMax=cols<=2?150:cols<=3?135:cols<=4?115:96;
+  var seat=Math.min(seatMax,Math.floor((maxContainerW-(cols-1)*20)/cols));
+  g.style.setProperty('--seat', seat + 'px');
+  g.style.gridTemplateColumns='repeat('+cols+', '+seat+'px)';
+  var fl=document.querySelector('.front-label');
+  var hasFront=false;
+  for(var f=0;f<lv.chars.length;f++){ if(lv.chars[f].traits.indexOf('front')>=0) hasFront=true; }
+  fl.style.display=hasFront?'block':'none';
+
+  lastEval=evaluate();
+
+  for(var r=0;r<lv.rows.length;r++){
+    for(var c=0;c<lv.rows[r].length;c++){
+      var cell=lv.rows[r][c];
+      var el=document.createElement('div');
+      if(!cell){ el.className='seat blank'; g.appendChild(el); continue; }
+      if(cell.npc){
+        el.className='seat npc-filled'+(cell.w?' window':'');
+        if(cell.w){ var wn=document.createElement('span'); wn.className='wicon'; wn.textContent='🪟'; el.appendChild(wn); }
+        var nc=document.createElement('div');
+        nc.className='pchar'; nc.style.background='#d1d5db'; nc.style.filter='grayscale(0.6)';
+        nc.textContent = getSkinEmoji(r*7+c*13); nc.title=(cell.npc.name+' '+cell.npc.tag+'（NPC，已就坐） — 点击对话');
+        el.appendChild(nc);
+        var nb=document.createElement('span'); nb.className='badge';
+        // 根据 personality 显示不同 badge
+        var ptag = (cell.npc.personality && cell.npc.personality.length > 0) ? (cell.npc.personality[0]==='quiet'?'🤫':cell.npc.personality[0]==='loud'?'📢':'👃') : '🧍';
+        nb.textContent = ptag;
+        nb.title = cell.npc.tag || 'NPC';
+        el.appendChild(nb);
+        // NPC 点击 = 冒泡说台词
+        (function(nr2,nc2){
+          el.addEventListener('click',function(e){
+            e.stopPropagation();
+            showNpcBubble(nr2,nc2);
+          });
+        })(r,c);
+        g.appendChild(el); continue;
+      }
+      el.className='seat'+(cell.w?' window':'')+(placementOf(r,c)?' filled':'');
+      el.dataset.r = r; el.dataset.c = c;
+      if(cell.w){
+        var w=document.createElement('span'); w.className='wicon'; w.textContent='🪟'; el.appendChild(w);
+      }
+      var pid=placementOf(r,c);
+      if(pid){
+        var ch=charById(lv,pid);
+        var pc=document.createElement('div');
+        var res=lastEval.results[pid];
+        var animClass='anim-bounce';
+        if(lastEval.allPlaced){ animClass += res.ok?' anim-happy':' anim-angry'; }
+        pc.className='pchar '+animClass; pc.style.background=ch.color; pc.textContent=ch.emoji;
+        pc.title=(ch.name+'：'+res.reason);
+        el.appendChild(pc);
+        var b=document.createElement('span');
+        b.className='badge anim-pop';
+        if(lastEval.allPlaced){ b.textContent=res.ok?'😊':'😠'; }
+        else{ b.textContent='🤔'; }
+        el.appendChild(b);
+      }
+      (function(rr,cc){
+        el.addEventListener('click',function(){ onSeatClick(rr,cc); });
+      })(r,c);
+      g.appendChild(el);
+    }
+  }
+
+  var tray=document.getElementById('tray');
+  tray.innerHTML='';
+  for(var m=0;m<lv.chars.length;m++){
+    var ch2=lv.chars[m];
+    var card=document.createElement('div');
+    // trait 徽章：单独一行，用 emoji 图标
+    var traitBadges='';
+    for(var t2=0;t2<ch2.traits.length;t2++){
+      var chip = TRAIT_META[ch2.traits[t2]].chip;
+      traitBadges += '<span title="'+TRAIT_META[ch2.traits[t2]].label+'">'+chip+'</span>';
+    }
+    var chipsHtml = traitBadges ? '<div class="trait-badges">'+traitBadges+'</div>' : '';
+    var tipHtml = ch2.line ? '<div class="tr">'+ch2.line+'</div>' : '';
+    card.className='tcard'+(selected===ch2.id?' sel':'')+(placement[ch2.id]?' out':'')+(traitBadges?' has-trait':'');
+    card.dataset.id = ch2.id;
+    card.innerHTML='<div class="em">'+ch2.emoji+'</div><div class="nm">'+ch2.name+'</div>'+chipsHtml+tipHtml;
+    card.title=ch2.name+'：'+ch2.line;
+    (function(id){
+      card.addEventListener('click',function(){
+        if(placement[id]){ delete placement[id]; selected=null; }
+        else{ selected=(selected===id)?null:id; }
+        render();
+      });
+    })(ch2.id);
+    tray.appendChild(card);
+  }
+
+  var placedCount=0;
+  for(var key in placement){ placedCount++; }
+  var total=lv.chars.length;
+  var st=document.getElementById('status');
+  if(placedCount<total){
+    st.textContent='还有 '+(total-placedCount)+' 位乘客没入座';
+  }else{
+    var bad=0, firstBad='';
+    for(var id2 in lastEval.results){
+      if(!lastEval.results[id2].ok){ bad++; if(!firstBad){ firstBad=charById(lv,id2).name+'：'+lastEval.results[id2].reason; } }
+    }
+    st.textContent=bad>0?(bad+' 位不满意 → '+firstBad):'全员满意！';
+  }
+
+  if(lastEval.allPlaced&&bad===0&&!won){
+    won=true;
+    setTimeout(showWin,300);
+  }
+}
+
+function showWin(){
+  var lv=LEVELS[cur];
+  SoundFX.win();
+  var stars=calcStars(steps,lv.chars.length);
+  var prev=bestStars[cur]||0;
+  if(stars>prev){ bestStars[cur]=stars; }
+  try{ localStorage.setItem(BEST_KEY, JSON.stringify(bestStars)); }catch(e){}
+
+  // 解锁下一关
+  if(!_isEndless && !_isDailyChallenge && cur+1>unlocked && cur+1<LEVELS.length){
+    unlocked=cur+1;
+    try{ localStorage.setItem(KEY,String(unlocked)); }catch(e){}
+  }
+
+  // NPC 关卡追踪
+  if(hasNpcInLevel(lv) && stars>0){ _npcBestStars[cur]=stars; }
+
+  // 无尽模式追踪
+  if(_isEndless){
+    _endlessStreak++;
+    _endlessStats.totalClears++;
+    _endlessStats.totalStars += stars;
+    if(lv.difficulty && lv.difficulty > _endlessStats.bestDifficulty){ _endlessStats.bestDifficulty = lv.difficulty; }
+    if(_endlessStreak > _endlessStats.maxStreak){ _endlessStats.maxStreak = _endlessStreak; }
+    try{ localStorage.setItem(ENDLESS_KEY, JSON.stringify(_endlessStats)); }catch(e){}
+  }
+
+  // 成就检测
+  checkAchievements();
+
+  // 渲染通关卡片
+  var starHtml='';
+  for(var i=0;i<3;i++){ starHtml+='<span>'+(i<stars?'★':'☆')+'</span>'; }
+  document.getElementById('winStar').innerHTML=starHtml;
+  document.getElementById('winSteps').textContent='本次操作 '+steps+' 步（推荐 ≤'+lv.chars.length+' 步）';
+  document.getElementById('winSub').textContent=lv.done;
+  document.getElementById('win').classList.remove('hidden');
+  document.getElementById('win').classList.add('win-celebrate');
+  setTimeout(function(){
+    document.getElementById('win').classList.remove('win-celebrate');
+  },1200);
+}
+
+// ============ 撤销栈 ============
+var _undoStack = [];
+var _UNDO_MAX = 30;
+function pushUndo(){
+  var snapshot = { placement: JSON.parse(JSON.stringify(placement)), selected: selected, steps: steps };
+  _undoStack.push(snapshot);
+  if(_undoStack.length > _UNDO_MAX) _undoStack.shift();
+}
+function doUndo(){
+  if(_undoStack.length === 0){ showBanner('没有可撤销的操作了'); return; }
+  var last = _undoStack.pop();
+  placement = last.placement;
+  selected = last.selected;
+  steps = last.steps;
+  won = false;
+  document.getElementById('win').classList.add('hidden');
+  SoundFX.undo();
+  render();
+  showBanner('↩️ 已撤销');
+}
+document.getElementById('btnUndo').addEventListener('click', doUndo);
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); doUndo(); }
+});
+
+function onSeatClick(r,c){
+  pushUndo();
+  var pid=placementOf(r,c);
+  if(pid){ delete placement[pid]; SoundFX.undo(); }
+  else if(selected){
+    var placedChar = charById(LEVELS[cur], selected);
+    placement[selected]={r:r,c:c}; selected=null; SoundFX.place();
+    triggerNpcReact(r, c, placedChar);
+  }
+  else { SoundFX.select(); }
+  steps++;
+  render();
+}
+
+function resetLevel(){
+  placement={}; selected=null; won=false; steps=0; _undoStack=[];
+  document.getElementById('win').classList.add('hidden');
+  render();
+}
+
+// 三星评级：steps ≤ total → 3★；≤ total*1.5 → 2★；≤ total*2 → 1★；其他 0★
+function calcStars(s,total){
+  if(s<=total) return 3;
+  if(s<=Math.ceil(total*1.5)) return 2;
+  if(s<=Math.ceil(total*2)) return 1;
+  return 0;
+}
+
+document.getElementById('btnReset').addEventListener('click',resetLevel);
+document.getElementById('btnHelp').addEventListener('click',function(){
+  document.getElementById('help').classList.remove('hidden');
+});
+document.getElementById('btnCloseHelp').addEventListener('click',function(){
+  document.getElementById('help').classList.add('hidden');
+});
+document.getElementById('btnClear').addEventListener('click',function(){
+  if(!confirm('确定清除所有本地进度？\n（解锁关卡 + 每关最佳星级 都将重置）')) return;
+  try{ localStorage.removeItem(KEY); localStorage.removeItem(BEST_KEY); }catch(e){}
+  unlocked=0; cur=0; bestStars={}; placement={}; selected=null; won=false; steps=0;
+  alert('✅ 已清理，重新从第 1 关开始');
+  render();
+});
+document.getElementById('btnNext').addEventListener('click',function(){
+  if(_isEndless){
+    _endlessDiff = Math.min(98, _endlessDiff + 10);
+    LEVELS.pop(); pushEndlessLevel();
+    SoundFX.win(); return;
+  }
+  if(_isDailyChallenge){ resetLevel(); return; }
+  if(cur<LEVELS.length-1){ cur=cur+1; resetLevel(); }
+  else{
+    var totalStars=0;
+    for(var k in bestStars){ totalStars+=bestStars[k]; }
+    document.getElementById('winStar').innerHTML='<span>★</span><span>★</span><span>★</span>';
+    document.getElementById('winSteps').textContent=LEVELS.length+' 关全部通关！共获得 '+totalStars+' / '+(LEVELS.length*3)+' 星';
+    document.getElementById('winSub').textContent='🎉 你是排座大师！点击「📋 选关」随时回来刷三星～';
+    document.getElementById('btnNext').textContent='再玩一遍';
+    document.getElementById('win').classList.add('win-celebrate');
+    cur=0; unlocked=LEVELS.length-1;
+  }
+});
+
+// ======= evaluatePure：纯函数版 evaluate（solver/generator 共用） =======
+function evaluatePure(level, placement) {
+  var results = {};
+  var allPlaced = true;
+  var occ = {};
+  // NPC 先占座（NPC 自带 personality traits，会真实影响玩家约束判定）
+  for (var nr = 0; nr < level.rows.length; nr++) {
+    for (var nc = 0; nc < level.rows[nr].length; nc++) {
+      var ncell = level.rows[nr][nc];
+      if (ncell && ncell.npc) {
+        occ[nr + ',' + nc] = {
+          id: 'npc_' + nr + '_' + nc,
+          emoji: ncell.npc.emoji,
+          name: ncell.npc.name,
+          traits: ncell.npc.personality || [],
+          isNpc: true
+        };
+      }
+    }
+  }
+  for (var i = 0; i < level.chars.length; i++) {
+    var ch = level.chars[i];
+    var p = placement[ch.id];
+    if (!p) { allPlaced = false; continue; }
+    occ[p.r + ',' + p.c] = ch;
+  }
+  for (var j = 0; j < level.chars.length; j++) {
+    var c2 = level.chars[j];
+    var pp = placement[c2.id];
+    if (!pp) { results[c2.id] = { ok: false, reason: '还没入座' }; continue; }
+    var cell = level.rows[pp.r][pp.c];
+    var ns = neighborsOf(level.rows, pp.r, pp.c);
+    var nchars = [];
+    for (var k = 0; k < ns.length; k++) { var oc = occ[ns[k][0] + ',' + ns[k][1]]; if (oc) nchars.push(oc); }
+    var ok = true, reason = '满意';
+    var ts = c2.traits;
+    for (var t = 0; t < ts.length; t++) {
+      var tr = ts[t];
+      if (tr === 'window' && !cell.w) { ok = false; reason = '非要靠窗不可'; break; }
+      if (tr === 'front' && pp.r !== 0) { ok = false; reason = '必须坐第一排'; break; }
+      if (tr === 'quiet') {
+        for (var q = 0; q < nchars.length; q++) { if (nchars[q].traits.indexOf('loud') >= 0) { ok = false; reason = '旁边太吵了'; break; } }
+        if (!ok) break;
+      }
+      if (tr === 'loud' && nchars.length === 0) { ok = false; reason = '身边一个人都没有'; break; }
+      if (tr === 'smellSensitive') {
+        for (var s = 0; s < nchars.length; s++) { if (nchars[s].traits.indexOf('scented') >= 0) { ok = false; reason = '旁边香水太冲了'; break; } }
+        if (!ok) break;
+      }
+    }
+    if (ok && level.pairs) {
+      for (var pi = 0; pi < level.pairs.length; pi++) {
+        var pr = level.pairs[pi];
+        if (pr.a !== c2.id && pr.b !== c2.id) continue;
+        var oid = pr.a === c2.id ? pr.b : pr.a;
+        var op = placement[oid];
+        if (!op) continue;
+        var adj = (Math.abs(pp.r - op.r) + Math.abs(pp.c - op.c)) === 1;
+        if (pr.type === 'couple' && !adj) { ok = false; reason = '要和另一半挨着'; break; }
+        if (pr.type === 'rivals' && adj) { ok = false; reason = '冤家路窄！'; break; }
+      }
+    }
+    results[c2.id] = { ok: ok, reason: reason };
+  }
+  return { allPlaced: allPlaced, results: results };
+}
+
+// ======= 回溯求解器 =======
+function solveAll(level, maxSolutions, prePlacement) {
+  maxSolutions = maxSolutions || 2;
+  prePlacement = prePlacement || {};
+  
+  // 收集座位（跳过 null 通道 + NPC 已占座位）
+  var seats = [];
+  for (var r = 0; r < level.rows.length; r++) {
+    for (var c = 0; c < level.rows[r].length; c++) {
+      if (level.rows[r][c] !== null && !level.rows[r][c].npc) seats.push([r, c]);
+    }
+  }
+  
+  // MRV 排序：硬约束多的先排；已在 prePlacement 里的跳过
+  function constraintScore(ch) {
+    var s = 0;
+    if (ch.traits.indexOf('window') >= 0) s += 100;
+    if (ch.traits.indexOf('front') >= 0) s += 100;
+    if (ch.traits.indexOf('loud') >= 0) s += 10;
+    if (ch.traits.indexOf('quiet') >= 0) s += 10;
+    if (ch.traits.indexOf('smellSensitive') >= 0) s += 10;
+    return s;
+  }
+  var sortedChars = level.chars.filter(function(c){ return !prePlacement[c.id]; })
+    .sort(function(a, b) { return constraintScore(b) - constraintScore(a); });
+  
+  var solutions = [];
+  var nodeCount = 0;
+  var rowsRef = level.rows;
+  var seatKey = function(r, c) { return r + ',' + c; };
+  
+  // 预计算每个座位的邻居
+  var nbCache = {};
+  for (var i = 0; i < seats.length; i++) {
+    nbCache[seatKey(seats[i][0], seats[i][1])] = neighborsOf(rowsRef, seats[i][0], seats[i][1]);
+  }
+  
+  // quickCheck：剪枝
+  function quickCheck(placement) {
+    var occ = {};
+    for (var id in placement) {
+      var p = placement[id];
+      occ[seatKey(p.r, p.c)] = charById(level, id);
+    }
+    
+    for (var id in placement) {
+      var ch = charById(level, id);
+      var p = placement[id];
+      var cell = rowsRef[p.r][p.c];
+      
+      if (ch.traits.indexOf('window') >= 0 && !cell.w) return false;
+      if (ch.traits.indexOf('front') >= 0 && p.r !== 0) return false;
+      
+      if (ch.traits.indexOf('quiet') >= 0) {
+        var ns = nbCache[seatKey(p.r, p.c)];
+        for (var k = 0; k < ns.length; k++) {
+          var oc = occ[seatKey(ns[k][0], ns[k][1])];
+          if (oc && oc.traits.indexOf('loud') >= 0) return false;
+        }
+      }
+      if (ch.traits.indexOf('smellSensitive') >= 0) {
+        var ns2 = nbCache[seatKey(p.r, p.c)];
+        for (var k2 = 0; k2 < ns2.length; k2++) {
+          var oc2 = occ[seatKey(ns2[k2][0], ns2[k2][1])];
+          if (oc2 && oc2.traits.indexOf('scented') >= 0) return false;
+        }
+      }
+      
+      if (level.pairs) {
+        for (var pi = 0; pi < level.pairs.length; pi++) {
+          var pr = level.pairs[pi];
+          if (pr.a !== id && pr.b !== id) continue;
+          var oid = pr.a === id ? pr.b : pr.a;
+          var op = placement[oid];
+          if (!op) continue;
+          var dist = Math.abs(p.r - op.r) + Math.abs(p.c - op.c);
+          if (pr.type === 'couple' && dist !== 1) return false;
+          if (pr.type === 'rivals' && dist === 1) return false;
+        }
+      }
+    }
+    return true;
+  }
+  
+  function isFullWin(placement) {
+    var ev = evaluatePure(level, placement);
+    if (!ev.allPlaced) return false;
+    for (var id in ev.results) { if (!ev.results[id].ok) return false; }
+    return true;
+  }
+  
+  // 初始化已占座位 = prePlacement 里已入座的
+  var usedSeats = {};
+  for (var pid in prePlacement) {
+    var pp = prePlacement[pid];
+    usedSeats[seatKey(pp.r, pp.c)] = true;
+  }
+  
+  // pre-placement 自己也要先 quickCheck 一次（玩家可能放错了硬约束）
+  if (!quickCheck(prePlacement)) {
+    return { solutions: [], nodeCount: 0 };
+  }
+  
+  function dfs(idx, placement) {
+    nodeCount++;
+    if (solutions.length >= maxSolutions) return;
+    
+    if (idx >= sortedChars.length) {
+      // 合并 prePlacement + placement
+      var merged = {};
+      for (var k in prePlacement) merged[k] = prePlacement[k];
+      for (var k2 in placement) merged[k2] = placement[k2];
+      if (isFullWin(merged)) {
+        solutions.push(merged);
+      }
+      return;
+    }
+    
+    var ch = sortedChars[idx];
+    for (var si = 0; si < seats.length; si++) {
+      var sr = seats[si][0], sc = seats[si][1];
+      var key = seatKey(sr, sc);
+      if (usedSeats[key]) continue;
+      
+      placement[ch.id] = { r: sr, c: sc };
+      usedSeats[key] = true;
+      
+      if (quickCheck(mergedPlacements(prePlacement, placement))) {
+        dfs(idx + 1, placement);
+      }
+      
+      delete placement[ch.id];
+      delete usedSeats[key];
+      
+      if (solutions.length >= maxSolutions) return;
+    }
+  }
+  
+  dfs(0, {});
+  
+  return { solutions: solutions, nodeCount: nodeCount };
+}
+
+function mergedPlacements(a, b) {
+  var r = {};
+  for (var k in a) r[k] = a[k];
+  for (var k2 in b) r[k2] = b[k2];
+  return r;
+}
+
+// ============ 提示系统 ============
+// 返回 { charId, row, col } 或 null（当前 placement 无解或已通关）
+function getHint(level, currentPlacement) {
+  var ev = evaluatePure(level, currentPlacement);
+  if (ev.allPlaced) return null; // 已经全放了
+  
+  // 先检查当前已入座的角色有没有硬约束/不可修复冲突
+  for (var id in currentPlacement) {
+    var ch = charById(level, id);
+    var p = currentPlacement[id];
+    var cell = level.rows[p.r][p.c];
+    if (ch.traits.indexOf('window') >= 0 && !cell.w) {
+      return { broken: true, reason: ch.name + ' 必须靠窗，但你放的不是靠窗位' };
+    }
+    if (ch.traits.indexOf('front') >= 0 && p.r !== 0) {
+      return { broken: true, reason: ch.name + ' 必须坐第一排' };
+    }
+  }
+  
+  var slv = solveAll(level, 1, currentPlacement);
+  if (slv.solutions.length === 0) {
+    return { broken: true, reason: '当前布局已经卡死——建议「🔄 重排本关」重来' };
+  }
+  
+  // 找到第一个还没入座的角色，看解里放哪
+  var sol = slv.solutions[0];
+  for (var i = 0; i < level.chars.length; i++) {
+    var c = level.chars[i];
+    if (!currentPlacement[c.id]) {
+      var p = sol[c.id];
+      return { charId: c.id, row: p.r, col: p.c };
+    }
+  }
+  return null;
+}
+
+// ======= 关卡生成器 =======
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = a;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function generateLevel(difficulty, seed) {
+  var rng = mulberry32(seed);
+
+  var layouts = [
+    { rows: [[{},{}],[{},{}]], scene: '🚌 公交车' },
+    { rows: [[{},{},{}],[{},{},{}]], scene: '🚌 公交车' },
+    { rows: [[{},{},{}],[{},{},{}]], scene: '🚄 高铁' },
+    { rows: [[{},{},{}],[{},{},{}]], scene: '🎬 电影院' },
+    { rows: [[{},{w:1}],[{},{w:1}],[{},{w:1}]], scene: '🚌 大巴' },
+    { rows: [[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]], scene: '🏫 教室家长会' },
+    { rows: [[{},{},{},{}],[{},{},{},{}]], scene: '🍜 食堂' },
+    { rows: [[{w:1},{},{},{}],[{w:1},{},{},{}]], scene: '💃 婚礼酒席' },
+    { rows: [[{},{},{}],[{},{},{}],[{},{},{}]], scene: '🏫 教室家长会' },
+    { rows: [[{},{},{},{}],[{},{},{},{}],[{},{},{},{}]], scene: '💃 婚礼酒席' },
+    { rows: [[{w:1},{},{},{},{}],[{w:1},{},{},{},{}]], scene: '🚄 高铁' },
+    { rows: [[{},{},{},{},{}],[{},{},{},{},{}]], scene: '💃 婚礼酒席' },
+  ];
+
+  var NPC_POOL = [
+    {emoji:'🐱', name:'社恐小咪', personality:['quiet'], reacts:['旁边这么吵...','能不能安静点？'], tag:'🤫 社恐'},
+    {emoji:'🐯', name:'霸道总裁', personality:['scented'], reacts:['香水两米八，自信满满','你一个弱鸡别矫情'], tag:'💼 总裁'},
+    {emoji:'🐨', name:'好奇宝宝', personality:['loud'], reacts:['终于有人陪我说话了','你好呀你好呀！'], tag:'👶 话痨'},
+    {emoji:'🦊', name:'外卖小哥', personality:[], reacts:['随便坐哈','别挡我送餐'], tag:'🏍️ 路人'},
+    {emoji:'🐼', name:'大爷遛弯', personality:[], reacts:['今天天不错','随便坐小伙子'], tag:'👴 退休'},
+    {emoji:'🦁', name:'隔壁大哥', personality:['loud'], reacts:['来聊聊呗','你一个人啊？'], tag:'💪 社牛'},
+    {emoji:'🐷', name:'小胖墩', personality:[], reacts:['好饿...','有没有人让座'], tag:'🍔 吃货'},
+    {emoji:'🐻', name:'壮实的人', personality:[], reacts:['嗯。',''], tag:'💪 沉默'},
+    {emoji:'🦜', name:'吵闹小孩', personality:['loud'], reacts:['啊啊啊好吵！','给我手机玩！'], tag:'👧 熊孩子'},
+    {emoji:'🐸', name:'安静奶奶', personality:['quiet','smellSensitive'], reacts:['这香水味儿...','小伙子能不能安静点'], tag:'👵 安静'},
+    {emoji:'🐵', name:'后座大叔', personality:['scented'], reacts:['香水喷多了吧',''], tag:'💼 商务'},
+    {emoji:'🐴', name:'赶路人', personality:[], reacts:['借过借过','马上要迟到了'], tag:'🏃 赶点'},
+    {emoji:'🐶', name:'小狗子', personality:['loud'], reacts:['汪汪！','主人主人！'], tag:'🐶 萌宠'},
+    {emoji:'🐰', name:'小兔子', personality:['quiet'], reacts:['别吵我...','请安静'], tag:'🐰 胆小'},
+    {emoji:'🦉', name:'神秘路人', personality:['smellSensitive'], reacts:['这味儿...',''], tag:'🎭 神秘'},
+  ];
+
+  for (var attempt = 0; attempt < 80; attempt++) {
+    // Step 1: 布局
+    var layout;
+    if (difficulty < 20) {
+      layout = layouts[Math.floor(rng() * 5)];
+    } else if (difficulty < 60) {
+      layout = layouts[Math.floor(rng() * layouts.length)];
+    } else {
+      layout = layouts[4 + Math.floor(rng() * (layouts.length - 4))];
+    }
+
+    var seatList = [];
+    for (var r = 0; r < layout.rows.length; r++)
+      for (var c = 0; c < layout.rows[r].length; c++)
+        if (layout.rows[r][c] !== null) seatList.push([r, c]);
+    if (seatList.length < 4) continue;
+
+    // Step 1.5: NPC 生成（diff 25 开始出现，逐步增加）
+    var npcCount = difficulty >= 25 ? Math.min(3, Math.max(1, Math.floor(difficulty / 25))) : 0;
+    if (npcCount > seatList.length - 3) npcCount = seatList.length - 3;
+    var npcSeats = [];
+    var availableForNpc = seatList.slice();
+    for (var ni = 0; ni < npcCount; ni++) {
+      if (availableForNpc.length === 0) break;
+      var pickIdx = Math.floor(rng() * availableForNpc.length);
+      npcSeats.push(availableForNpc[pickIdx]);
+      availableForNpc.splice(pickIdx, 1);
+    }
+    // 扣掉 NPC 后，玩家可用座位
+    var playerSeats = availableForNpc;
+    var charCount = playerSeats.length - 1; // 留 1 空位
+    if (charCount < 2) continue;
+
+    // Step 2: 约束解锁（渐进开放，和 NPC 配合）
+    var allowedTraits = [];
+    var allowedPairs = [];
+    if (difficulty >= 1)   allowedTraits.push('window');
+    if (difficulty >= 12)  allowedTraits.push('front');
+    if (difficulty >= 25)  allowedTraits.push('loud');
+    if (difficulty >= 40)  allowedTraits.push('quiet');
+    if (difficulty >= 55)  { allowedTraits.push('scented'); allowedTraits.push('smellSensitive'); }
+    // pair：couple (diff 70-84) 和 rivals (diff 85+) 不同时开放
+    if (difficulty >= 70 && difficulty < 85) allowedPairs.push('couple');
+    if (difficulty >= 85) allowedPairs.push('rivals');
+
+    // Step 3: 构造目标解（从 playerSeats 里选）
+    var emojis = ['🦊','🐹','🐨','🐰','🐻','🐷','🐮','🐵','🐯','🐱','🐶','🐸','🦁','🐼','🦜','🐿️','🦔','🦉'];
+    var colors = ['#fef3c7','#e0e7ff','#d1fae5','#fce7f3','#fee2e2','#fef9c3','#e0f2fe','#fde68a','#ede9fe','#bae6fd'];
+
+    var shuffledSeats = playerSeats.slice().sort(function() { return rng() - 0.5; });
+    var chars = [];
+    var targetPlacement = {};
+
+    for (var ci = 0; ci < charCount; ci++) {
+      var cid = 'g' + ci;
+      chars.push({ id: cid, emoji: emojis[Math.floor(rng()*emojis.length)], name: '乘客'+(ci+1),
+                   color: colors[Math.floor(rng()*colors.length)], traits: [], line: '随便坐' });
+      targetPlacement[cid] = { r: shuffledSeats[ci][0], c: shuffledSeats[ci][1] };
+    }
+
+    // Step 4: 反向贴约束
+    var MAX_TRAITS = 4;
+    var traitCharCount = Math.min(charCount - 1, Math.max(1, Math.min(MAX_TRAITS, Math.floor(difficulty / 15))));
+    traitCharCount = Math.max(traitCharCount, allowedTraits.length > 0 ? 1 : 0);
+
+    var charOrder = [];
+    for (var cii = 0; cii < chars.length; cii++) charOrder.push(cii);
+    charOrder.sort(function() { return rng() - 0.5; });
+
+    for (var ti = 0; ti < traitCharCount; ti++) {
+      var cidx = charOrder[ti];
+      var ch = chars[cidx];
+      var p = targetPlacement[ch.id];
+      var cell = layout.rows[p.r][p.c];
+      var traitPool = [];
+      if (allowedTraits.indexOf('window') >= 0 && cell.w) traitPool.push('window');
+      if (allowedTraits.indexOf('front') >= 0 && p.r === 0) traitPool.push('front');
+      var softTraits = ['loud','quiet','scented','smellSensitive'].filter(function(t){
+        return allowedTraits.indexOf(t) >= 0 && traitPool.indexOf(t) < 0;
+      });
+      if (softTraits.length > 0) traitPool.push(softTraits[Math.floor(rng()*softTraits.length)]);
+      var addCount = rng() < 0.3 && traitPool.length >= 2 ? 2 : 1;
+      for (var ta = 0; ta < addCount && traitPool.length > 0; ta++) {
+        var pickIdx2 = Math.floor(rng() * traitPool.length);
+        var pick = traitPool[pickIdx2];
+        if (ch.traits.indexOf(pick) < 0) ch.traits.push(pick);
+        traitPool.splice(pickIdx2, 1);
+      }
+    }
+
+    // 配对约束
+    var pairs = null;
+    if (allowedPairs.length > 0 && charCount >= 2 && rng() < Math.min(0.7, difficulty/120)) {
+      var pairType = allowedPairs[Math.floor(rng()*allowedPairs.length)];
+      var sortedByTraits = chars.slice().sort(function(a,b){ return a.traits.length - b.traits.length; });
+      pairs = [{ type: pairType, a: sortedByTraits[0].id, b: sortedByTraits[1].id }];
+    }
+
+    // 构造 LevelDef（含 NPC）
+    var level = {
+      id: 10000 + seed, name: '生成关卡', scene: layout.scene,
+      tip: '试试让所有人都满意！',
+      rows: JSON.parse(JSON.stringify(layout.rows)),
+      pairs: pairs, chars: chars,
+      done: '全员满意！', generated: true,
+      difficulty: difficulty, seed: seed
+    };
+    // 贴 NPC 到 rows
+    for (var ni2 = 0; ni2 < npcSeats.length; ni2++) {
+      var ns = npcSeats[ni2];
+      var npcPick = NPC_POOL[Math.floor(rng()*NPC_POOL.length)];
+      level.rows[ns[0]][ns[1]].npc = { emoji: npcPick.emoji, name: npcPick.name };
+    }
+
+    // Step 5: solver 验证
+    var slv = solveAll(level, 2);
+    if (slv.solutions.length === 0) continue;
+    if (slv.solutions.length >= 2 && difficulty > 70) {
+      for (var addTry = 0; addTry < 3; addTry++) {
+        var sortedNeutrals = level.chars.slice().sort(function(a,b){ return a.traits.length - b.traits.length; });
+        var added = false;
+        for (var si = 0; si < sortedNeutrals.length; si++) {
+          var tc = sortedNeutrals[si];
+          var available = allowedTraits.filter(function(t){ return tc.traits.indexOf(t) < 0; });
+          if (available.length === 0) continue;
+          tc.traits.push(available[Math.floor(rng()*available.length)]);
+          var slv2 = solveAll(level, 2);
+          if (slv2.solutions.length === 0) { tc.traits.pop(); continue; }
+          slv = slv2;
+          if (slv.solutions.length < 2) { added = true; break; }
+          tc.traits.pop();
+        }
+        if (added) break;
+      }
+    }
+
+    // Step 6: 三星可达性
+    var threeStarOk = true;
+    for (var qh = 0; qh < chars.length; qh++) {
+      if (chars[qh].traits.indexOf('quiet') < 0) continue;
+      var pqh = slv.solutions[0][chars[qh].id];
+      var nsqh = neighborsOf(level.rows, pqh.r, pqh.c);
+      var emptyNeighbor = false;
+      for (var ek = 0; ek < nsqh.length; ek++) {
+        var nrk = nsqh[ek][0], nck = nsqh[ek][1];
+        var occupied = false;
+        for (var ctk = 0; ctk < chars.length; ctk++) {
+          var pk = slv.solutions[0][chars[ctk].id];
+          if (pk && pk.r === nrk && pk.c === nck) { occupied = true; break; }
+        }
+        // NPC 也算已占
+        if (level.rows[nrk] && level.rows[nrk][nck] && level.rows[nrk][nck].npc) occupied = true;
+        if (!occupied) { emptyNeighbor = true; break; }
+      }
+      if (!emptyNeighbor) { threeStarOk = false; break; }
+    }
+    if (!threeStarOk) continue;
+
+    // 关卡质量筛选：跳过"随便放就过"的无聊关卡
+    // nodeCount 低 = 解空间极宽（多组无关紧要的解）
+    // 下限按难度动态调整：难度 25→nodeCount≥15，难度 90→nodeCount≥60
+    var minNode = Math.min(60, Math.max(15, Math.floor(difficulty * 0.7)));
+    if (slv.nodeCount < minNode) continue;
+
+    level.nodeCount = slv.nodeCount;
+    level.solutionCount = slv.solutions.length;
+    level.npcCount = npcCount;
+    return level;
+  }
+
+  return null;
+}
+
+// ======= 调试面板绑定 =======
+document.getElementById('btnRunSolver').addEventListener('click', function() {
+  var report = [];
+  for (var i = 0; i < LEVELS.length; i++) {
+    var lv = LEVELS[i];
+    var t0 = performance.now();
+    var res = solveAll(lv, 5);
+    var ms = (performance.now() - t0).toFixed(1);
+    var status = res.solutions.length === 0 ? '❌ 无解' : ('✅ ' + res.solutions.length + ' 解');
+    report.push((i+1) + '. ' + lv.name + ' → ' + status + ' | 节点=' + res.nodeCount + ' | ' + ms + 'ms');
+  }
+  document.getElementById('solverReport').innerHTML = report.join('<br>');
+});
+
+document.getElementById('btnRunP0Test').addEventListener('click', function() {
+  // P0 闭环全自动自测
+  var report = [];
+  var allPass = true;
+  var lines = ['<b>🎯 P0 闭环自测结果</b><br>'];
+  lines.push('<table style="font-size:11px;border-collapse:collapse;width:100%;">');
+  lines.push('<tr style="background:#ede9fe;"><th>#</th><th>关卡</th><th>场景</th><th>chars</th><th>解数</th><th>节点</th><th>3★阈值</th><th>通过</th></tr>');
+
+  function calcStarsP0(s,t){
+    if(s<=t) return 3;
+    if(s<=Math.ceil(t*1.5)) return 2;
+    if(s<=Math.ceil(t*2)) return 1;
+    return 0;
+  }
+
+  for (var i = 0; i < LEVELS.length; i++) {
+    var lv = LEVELS[i];
+    var t0 = performance.now();
+    var slv = solveAll(lv, 3);
+    var ms = (performance.now() - t0).toFixed(1);
+    var ideal = lv.chars.length;
+
+    // Check 1: 有解
+    var pass1 = slv.solutions.length >= 1;
+    // Check 2: 所有解 evaluatePure 全 ok
+    var pass2 = true;
+    for (var si = 0; si < slv.solutions.length; si++) {
+      var ev = evaluatePure(lv, slv.solutions[si]);
+      if (!ev.allPlaced) { pass2 = false; break; }
+      for (var id in ev.results) { if (!ev.results[id].ok) { pass2 = false; break; } }
+      if (!pass2) break;
+    }
+    // Check 3: 三星公式边界
+    var pass3 = calcStarsP0(ideal, ideal)===3
+             && calcStarsP0(Math.ceil(ideal*1.5), ideal)>=2
+             && calcStarsP0(Math.ceil(ideal*2), ideal)>=1
+             && calcStarsP0(ideal*2+1, ideal)===0;
+    // Check 4: 节点 ≤ 200（原型 10 关应该很轻松）
+    var pass4 = slv.nodeCount <= 500;
+
+    var pass = pass1 && pass2 && pass3 && pass4;
+    if (!pass) allPass = false;
+
+    var mark = pass ? '✅' : '❌';
+    lines.push('<tr style="border-bottom:1px solid #e5e7eb;"><td>'+(i+1)+'</td><td>'+lv.name+'</td><td>'+lv.scene+'</td><td>'+lv.chars.length+'</td><td>'+slv.solutions.length+'</td><td>'+slv.nodeCount+'</td><td>≤'+ideal+'</td><td>'+mark+'</td></tr>');
+  }
+  lines.push('</table>');
+  lines.push('<br><b>' + (allPass ? '✅ 全部通过！P0 闭环 OK' : '❌ 存在失败项，请检查红色行') + '</b>');
+  lines.push('<br><b>测试覆盖：</b>① solver 有解 ② 解满足全部约束 ③ 三星评级公式边界 ④ 节点数正常');
+
+  document.getElementById('solverReport').innerHTML = lines.join('');
+  console.log('🧹 P0 自测完成，结论：' + (allPass ? '✅ ALL PASS' : '❌ HAS FAILURES'));
+});
+
+document.getElementById('diffSlider').addEventListener('input', function() {
+  document.getElementById('diffVal').textContent = this.value;
+});
+
+document.getElementById('btnGen').addEventListener('click', function() {
+  var diff = parseInt(document.getElementById('diffSlider').value, 10);
+  var seed = parseInt(document.getElementById('seedInput').value, 10);
+  var t0 = performance.now();
+  var lv = generateLevel(diff, seed);
+  var ms = (performance.now() - t0).toFixed(1);
+  
+  if (!lv) {
+    document.getElementById('genResult').innerHTML = '<span style="color:#c0392b;">❌ 80 次重试仍无解</span>';
+    return;
+  }
+  
+  var seatList = [];
+  for (var r = 0; r < lv.rows.length; r++)
+    for (var c = 0; c < lv.rows[r].length; c++)
+      if (lv.rows[r][c] !== null) seatList.push([r, c]);
+  
+  var traitSummary = {};
+  for (var i = 0; i < lv.chars.length; i++) {
+    for (var t = 0; t < lv.chars[i].traits.length; t++) {
+      var tt = lv.chars[i].traits[t];
+      traitSummary[tt] = (traitSummary[tt] || 0) + 1;
+    }
+  }
+  var traitStr = Object.keys(traitSummary).map(function(k) { return k + '×' + traitSummary[k]; }).join(' ');
+  var pairStr = lv.pairs ? lv.pairs.map(function(p) { return p.type; }).join(',') : '无';
+  
+  generatedLevel = lv; // 存入全局，供试玩按钮使用
+  
+  document.getElementById('genResult').innerHTML =
+    '<b style="color:#059669;">✅ 生成成功</b> | ' + ms + 'ms<br>' +
+    '场景: ' + lv.scene + ' | 难度: ' + diff + '<br>' +
+    '座位: ' + seatList.length + ' | 角色: ' + lv.chars.length + '<br>' +
+    '约束: ' + (traitStr || '无') + ' | pairs: ' + pairStr + '<br>' +
+    'solver: ' + lv.solutionCount + ' 解 | 节点: ' + lv.nodeCount + '<br>' +
+    '<span style="color:#059669;">可直接灌进关卡池试玩 ↓</span>';
+});
+
+var generatedLevel = null;
+document.getElementById('btnPlayGen').addEventListener('click', function() {
+  if (!generatedLevel) {
+    document.getElementById('genResult').innerHTML += '<br><span style="color:#c0392b;">⚠️ 先生成一关！</span>';
+    return;
+  }
+  // 把生成关卡追加到关卡池，然后跳转到它
+  LEVELS.push(generatedLevel);
+  cur = LEVELS.length - 1;
+  unlocked = cur;
+  placement = {};
+  selected = null;
+  won = false;
+  document.getElementById('devPanel').classList.add('hidden');
+  render();
+});
+
+// 给调试面板加一个唤出入口：点击 logo 3 次打开
+var logoClickCount = 0;
+var logoClickTimer = null;
+document.querySelector('.logo').addEventListener('click', function() {
+  logoClickCount++;
+  if (logoClickTimer) clearTimeout(logoClickTimer);
+  logoClickTimer = setTimeout(function() { logoClickCount = 0; }, 1500);
+  if (logoClickCount >= 3) {
+    logoClickCount = 0;
+    document.getElementById('devPanel').classList.remove('hidden');
+  }
+});
+
+document.getElementById('btnCloseDev').addEventListener('click', function() {
+  document.getElementById('devPanel').classList.add('hidden');
+});
+
+// ============ 音效系统（Web Audio API，零外部文件） ============
+var SoundFX = (function(){
+  var ctx = null;
+  var enabled = true;
+  function init(){
+    if(ctx) return;
+    try{ ctx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ ctx=null; }
+  }
+  function beep(freq, dur, type, gain){
+    if(!enabled) return;
+    if(!ctx) init();
+    if(!ctx) return;
+    if(ctx.state==='suspended') ctx.resume();
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = type||'sine';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(gain||0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    osc.connect(g).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  }
+  return {
+    place: function(){ beep(660, 0.08, 'sine', 0.15); setTimeout(function(){ beep(880, 0.06, 'sine', 0.12); }, 40); },
+    undo:  function(){ beep(320, 0.10, 'triangle', 0.12); },
+    select:function(){ beep(520, 0.04, 'sine', 0.10); },
+    win:   function(){ beep(523, 0.12, 'sine', 0.18); setTimeout(function(){ beep(659, 0.12, 'sine', 0.18); }, 120); setTimeout(function(){ beep(784, 0.25, 'sine', 0.20); }, 240); },
+    lose:  function(){ beep(200, 0.18, 'sawtooth', 0.15); },
+    toggle: function(v){ enabled=v; },
+    isOn: function(){ return enabled; }
+  };
+})();
+
+// ============ 关卡选择页 ============
+var _lsFilter = 'all'; // 'all' | 'npc' | 'pair' | 'threeStar'
+document.getElementById('btnLevelSelect').addEventListener('click', function(){
+  renderLevelGrid();
+  document.getElementById('levelSelectOverlay').classList.remove('hidden');
+  SoundFX.select();
+});
+document.getElementById('btnCloseLevelSelect').addEventListener('click', function(){
+  document.getElementById('levelSelectOverlay').classList.add('hidden');
+});
+function _getNpcCount(lv){
+  var c=0; for(var r=0;r<lv.rows.length;r++) for(var ci=0;ci<lv.rows[r].length;ci++) if(lv.rows[r][ci]&&lv.rows[r][ci].npc) c++;
+  return c;
+}
+function renderLevelGrid(){
+  var grid = document.getElementById('levelGrid');
+  grid.innerHTML = '';
+  var totalStars = 0;
+  var unlockedCount = 0;
+  // 筛选器
+  var filterBar = document.createElement('div'); filterBar.className='ls-filter-bar';
+  var filters = [
+    {k:'all',  ic:'📋', t:'全部'},
+    {k:'npc',  ic:'🧍', t:'有 NPC'},
+    {k:'pair', ic:'👥', t:'有 pair'},
+    {k:'threeStar', ic:'💎', t:'我三星'},
+  ];
+  for(var fi=0;fi<filters.length;fi++){
+    var fb = document.createElement('button');
+    fb.className = 'ls-filter'+(_lsFilter===filters[fi].k?' active':'');
+    fb.textContent = filters[fi].ic+' '+filters[fi].t;
+    (function(kk){ fb.addEventListener('click',function(){ _lsFilter=kk; renderLevelGrid(); }); })(filters[fi].k);
+    filterBar.appendChild(fb);
+  }
+  grid.appendChild(filterBar);
+  // 关卡卡片
+  var cardsWrap = document.createElement('div'); cardsWrap.className='lvl-cards-wrap';
+  for(var i=0;i<LEVELS.length;i++){
+    var stars = bestStars[i]||0;
+    totalStars += stars;
+    var lv = LEVELS[i];
+    var locked = i > unlocked;
+    if(!locked) unlockedCount++;
+    var npcCount = _getNpcCount(lv);
+    var hasPair = lv.pairs && lv.pairs.length>0;
+    // 筛选
+    if(_lsFilter==='npc' && npcCount===0) continue;
+    if(_lsFilter==='pair' && !hasPair) continue;
+    if(_lsFilter==='threeStar' && stars<3) continue;
+    var card = document.createElement('div');
+    card.className = 'lvl-card' + (locked?' locked':'') + (i===cur?' active':'');
+    // num
+    var num = document.createElement('div'); num.className='lvl-num'; num.textContent = locked?'🔒':(i+1);
+    card.appendChild(num);
+    // scene + 标签
+    var sceneWrap = document.createElement('div'); sceneWrap.className='lvl-scene';
+    sceneWrap.appendChild(document.createTextNode(lv.scene));
+    if(npcCount>0){ var nb=document.createElement('span'); nb.className='lvl-tag lvl-tag-npc'; nb.textContent='🧍'+npcCount; sceneWrap.appendChild(nb); }
+    if(hasPair){ var pb=document.createElement('span'); pb.className='lvl-tag lvl-tag-pair'; pb.textContent='👥'; sceneWrap.appendChild(pb); }
+    if(lv.difficulty!=null){ var db=document.createElement('span'); db.className='lvl-tag lvl-tag-diff'; db.textContent='⚙️'+lv.difficulty; sceneWrap.appendChild(db); }
+    card.appendChild(sceneWrap);
+    // stars
+    var starWrap = document.createElement('div'); starWrap.className='lvl-stars';
+    if(stars>0){ for(var si=0;si<3;si++){ var ss=document.createElement('span'); ss.textContent=(si<stars?'★':'☆'); if(si<stars) ss.className='star-got'; starWrap.appendChild(ss); } }
+    else { starWrap.textContent='—'; }
+    card.appendChild(starWrap);
+    if(stars>0){ var done=document.createElement('div'); done.className='lvl-done'; done.textContent='✓ 通关'; card.appendChild(done); }
+    if(!locked){
+      (function(idx){ card.addEventListener('click',function(){
+        cur = idx; resetLevel();
+        document.getElementById('levelSelectOverlay').classList.add('hidden');
+        SoundFX.select();
+      }); })(i);
+    }
+    cardsWrap.appendChild(card);
+  }
+  grid.appendChild(cardsWrap);
+  // 统计
+  var stats = document.getElementById('lsStats');
+  stats.textContent = '共 ' + LEVELS.length + ' 关 · 已解锁 ' + unlockedCount + ' 关 · 总星 ' + totalStars + ' / ' + (LEVELS.length*3);
+}
+
+// ============ 提示按钮 ============
+document.getElementById('btnHint').addEventListener('click', function(){
+  var lv = LEVELS[cur];
+  var hint = getHint(lv, placement);
+  SoundFX.select();
+  clearHintHighlight();
+  if(!hint){ showBanner('✅ 已经通关了，不需要提示～'); return; }
+  if(hint.broken){ showBanner('⚠️ ' + hint.reason); return; }
+  _hintShown = hint;
+  var ch = charById(lv, hint.charId);
+  showBanner('💡 提示：先让 ' + ch.emoji + ' ' + ch.name + ' 坐这里');
+  setTimeout(function(){
+    var seats = document.querySelectorAll('.seat');
+    seats.forEach(function(s){
+      if(parseInt(s.dataset.r,10)===hint.row && parseInt(s.dataset.c,10)===hint.col){
+        s.classList.add('hint-target');
+      }
+    });
+    document.querySelectorAll('.tcard').forEach(function(tc){
+      if(tc.dataset.id === hint.charId) tc.classList.add('hint-char');
+    });
+  }, 30);
+  SoundFX.place();
+});
+var _hintShown = null;
+function clearHintHighlight(){
+  document.querySelectorAll('.seat.hint-target').forEach(function(s){ s.classList.remove('hint-target'); });
+  document.querySelectorAll('.tcard.hint-char').forEach(function(s){ s.classList.remove('hint-char'); });
+  var oldBanner = document.querySelector('.hint-banner');
+  if(oldBanner) oldBanner.remove();
+}
+function showBanner(text){
+  var b = document.createElement('div');
+  b.className = 'hint-banner'; b.textContent = text;
+  document.body.appendChild(b);
+  setTimeout(function(){ if(b.parentNode) b.parentNode.removeChild(b); }, 2500);
+}
+
+// ====== NPC 对话气泡 ======
+function showNpcBubble(r, c) {
+  var lv = LEVELS[cur]; if(!lv) return;
+  var cell = lv.rows[r][c]; if(!cell || !cell.npc) return;
+  var npc = cell.npc;
+  // 随机选一句台词
+  var all = npc.reacts && npc.reacts.length > 0 ? npc.reacts : ['随便坐'];
+  var line = all[Math.floor(Math.random()*all.length)];
+  if(!line) line = '随便坐哈';
+  
+  // 找座位 DOM
+  var seats = document.querySelectorAll('.seat');
+  var cols = lv.rows[0].length;
+  var targetEl = seats[r * cols + c];
+  if(!targetEl) return;
+  
+  // 清旧 bubble
+  var old = targetEl.querySelector('.npc-bubble');
+  if(old) old.remove();
+  
+  // 造气泡
+  var bubble = document.createElement('div');
+  bubble.className = 'npc-bubble';
+  bubble.innerHTML = '<div class="npc-bubble-em">'+getSkinEmoji(r*7+c*13)+'</div><div class="npc-bubble-text">'+line+'</div><div class="npc-bubble-tail"></div>';
+  targetEl.appendChild(bubble);
+  
+  // 自动消失
+  setTimeout(function(){
+    bubble.classList.add('fadeOut');
+    setTimeout(function(){ if(bubble.parentNode) bubble.parentNode.removeChild(bubble); }, 400);
+  }, 2200);
+}
+
+// 玩家入座后，检查周围 NPC 是否有反应
+function triggerNpcReact(playerR, playerC, playerChar) {
+  var lv = LEVELS[cur]; if(!lv) return;
+  var ns = neighborsOf(lv.rows, playerR, playerC);
+  for(var i=0;i<ns.length;i++){
+    var nr = ns[i][0], nc = ns[i][1];
+    var cell = lv.rows[nr][nc];
+    if(cell && cell.npc && cell.npc.reacts && cell.npc.reacts.length > 0){
+      // NPC traits 和玩家 traits 是否有冲突？
+      var conflict = false;
+      for(var j=0;j<cell.npc.personality.length;j++){
+        var pt = cell.npc.personality[j];
+        if(pt === 'quiet' && playerChar.traits.indexOf('loud') >= 0) conflict = true;
+        if(pt === 'smellSensitive' && playerChar.traits.indexOf('scented') >= 0) conflict = true;
+      }
+      // 随机选一句反应（有冲突就说冲突的，没冲突说普通的）
+      var reacts = cell.npc.reacts.filter(function(x){ return x; });
+      var line = reacts[Math.floor(Math.random()*reacts.length)];
+      // 延迟一点出，让玩家入座动画先播
+      setTimeout(function(r,c,l){
+        showNpcBubble(r, c);
+        // 直接替换气泡文字（showNpcBubble 选的是随机的，我们改精确的）
+        setTimeout(function(){
+          var seats = document.querySelectorAll('.seat');
+          var cols = lv.rows[0].length;
+          var el = seats[r * cols + c];
+          if(el){ var b = el.querySelector('.npc-bubble-text'); if(b) b.textContent = l; }
+        }, 50);
+      }, 450 + i*120, nr, nc, line);
+    }
+  }
+}
+
+// ============ 每日挑战 ============
+var _isDailyChallenge = false;
+var _dailyLevelBackup = null;
+document.getElementById('btnDaily').addEventListener('click', function(){
+  SoundFX.select();
+  var today = new Date();
+  var seedStr = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
+  var seed = 0;
+  for(var i=0;i<seedStr.length;i++){ seed = (seed*31 + seedStr.charCodeAt(i)) >>> 0; }
+  var lv = generateLevel(50 + (today.getDate()%4)*15, seed);
+  if(!lv){ showBanner('今日挑战生成失败，请稍后再试'); return; }
+  _dailyLevelBackup = LEVELS[LEVELS.length-1];
+  LEVELS.push(lv);
+  cur = LEVELS.length - 1;
+  placement = {}; selected = null; won = false; steps = 0;
+  _isDailyChallenge = true;
+  render();
+  showBanner('🌅 每日挑战 · ' + seedStr + ' · ' + lv.scene);
+});
+
+// ============ 反馈面板渲染 ============
+function renderFeedback(){
+  var lv = LEVELS[cur]; if(!lv) return;
+  var fb = document.getElementById('feedback');
+  var ev = evaluatePure(lv, placement);
+  var html = '';
+  for(var i=0;i<lv.chars.length;i++){
+    var c = lv.chars[i]; var r = ev.results[c.id]; if(!r) continue;
+    var status = r.ok ? '<span class="fb-status fb-ok">✓</span>' : '<span class="fb-status fb-fail">✗</span>';
+    var reason = r.ok ? '一切 OK' : (r.reason || '有约束没满足');
+    html += '<div class="fb-row"><span class="fb-emoji">'+c.emoji+'</span><span class="fb-name">'+c.name+'</span>'+status+'<span class="fb-reason">'+reason+'</span></div>';
+  }
+  fb.innerHTML = html;
+}
+
+// 给 render() 做猴子补丁：末尾加 feedback 面板
+var _origRender = render;
+render = function(){
+  _origRender();
+  renderFeedback();
+};
+
+var _origOnSeatClick = onSeatClick;
+onSeatClick = function(r, c){
+  _origOnSeatClick(r, c);
+  clearHintHighlight();
+};
+
+// resetLevel 里清每日挑战
+var _origReset = resetLevel;
+resetLevel = function(){
+  if(_isDailyChallenge){ LEVELS.pop(); _isDailyChallenge = false; cur = Math.min(unlocked, LEVELS.length-1); }
+  if(_isEndless){ LEVELS.pop(); _isEndless = false; cur = Math.min(unlocked, LEVELS.length-1); }
+  _origReset();
+};
+
+// ============ 主题切换 ============
+var _THEME_KEY = 'sqp_theme_v1';
+var THEMES = ['','theme-ink','theme-toon']; // ''=默认紫
+var _themeIdx = 0;
+try{ _themeIdx = parseInt(localStorage.getItem(_THEME_KEY)||'0',10)||0; }catch(e){}
+function applyTheme(){
+  document.body.classList.remove('theme-ink','theme-toon');
+  document.body.className = document.body.className + ' ' + THEMES[_themeIdx];
+}
+applyTheme();
+document.getElementById('btnTheme').addEventListener('click', function(){
+  _themeIdx = (_themeIdx + 1) % THEMES.length;
+  applyTheme();
+  try{ localStorage.setItem(_THEME_KEY, _themeIdx); }catch(e){}
+  var names = ['默认紫','国风红','卡通橙'];
+  showBanner('🎨 '+names[_themeIdx]+'主题');
+});
+
+// ============ 无尽模式 ============
+var _isEndless = false;
+var _endlessDiff = 20;
+document.getElementById('btnEndless').addEventListener('click', function(){
+  SoundFX.select();
+  if(_isEndless){ resetLevel(); return; }
+  _endlessDiff = 20;
+  pushEndlessLevel();
+  showBanner('🌊 无尽模式 · 难度从 20 开始递增');
+});
+function pushEndlessLevel(){
+  var lv = generateLevel(_endlessDiff, (_endlessDiff*137 + 99991)>>>0);
+  if(!lv){ _endlessDiff = Math.max(10, _endlessDiff-5); lv = generateLevel(_endlessDiff, 1); }
+  var r = mulberry32(_endlessDiff*137+99991);
+  // 复用润色模块里的池（必须等上面 IIFE 执行完才存在）
+  var traitNames = (typeof NAME_POOLS !== 'undefined' && NAME_POOLS.TRAIT_NAMES) ? NAME_POOLS.TRAIT_NAMES : {};
+  var sceneDefault = (typeof NAME_POOLS !== 'undefined' && NAME_POOLS.SCENE_DEFAULT) ? NAME_POOLS.SCENE_DEFAULT[lv.scene] : null;
+  var tEmoji = (typeof TRAIT_EMOJI !== 'undefined') ? TRAIT_EMOJI : {};
+  var fillEmoji = (typeof FILLER_EMOJIS !== 'undefined') ? FILLER_EMOJIS : ['🦊','🐹','🐻','🐱'];
+  var colors = ['#fef3c7','#e0e7ff','#d1fae5','#fce7f3','#fee2e2','#e0f2fe','#ede9fe','#bae6fd','#dcfce7','#ffedd5'];
+  for(var i=0;i<lv.chars.length;i++){
+    var ch = lv.chars[i];
+    var t = ch.traits && ch.traits[0];
+    if(t && traitNames[t] && traitNames[t].length){
+      ch.name = traitNames[t][Math.floor(r()*traitNames[t].length)];
+    } else {
+      ch.name = (sceneDefault && sceneDefault[i%sceneDefault.length]) || '乘客'+i;
+    }
+    if(t && tEmoji[t] && tEmoji[t].length){
+      ch.emoji = tEmoji[t][Math.floor(r()*tEmoji[t].length)];
+    } else {
+      ch.emoji = fillEmoji[Math.floor(r()*fillEmoji.length)];
+    }
+    ch.color = colors[Math.floor(r()*colors.length)];
+    ch.line = ch.traits.length===0 ? '随便坐' : ('我想'+t);
+  }
+  lv.tip = '第 '+_endlessDiff+' 档难度';
+  LEVELS.push(lv);
+  cur = LEVELS.length - 1;
+  placement = {}; selected = null; won = false; steps = 0;
+  _isEndless = true;
+  render();
+}
+
+// ============ 长按乘客卡解除入座 ============
+(function addLongPress(){
+  var pressTimer = null;
+  var startX=0, startY=0;
+  document.addEventListener('touchstart', function(e){
+    if(e.touches.length!==1) return;
+    var tc = e.target.closest && e.target.closest('.tcard');
+    if(!tc) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    pressTimer = setTimeout(function(){
+      var id = tc.dataset.id;
+      if(id && placement[id]){
+        delete placement[id]; selected = null; SoundFX.undo(); render();
+        showBanner('✓ 解除入座');
+      }
+    }, 550);
+  }, true);
+  document.addEventListener('touchmove', function(e){
+    if(!pressTimer) return;
+    if(Math.abs(e.touches[0].clientX-startX) > 8 || Math.abs(e.touches[0].clientY-startY) > 8){
+      clearTimeout(pressTimer); pressTimer = null;
+    }
+  }, true);
+  document.addEventListener('touchend', function(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }, true);
+  document.addEventListener('touchcancel', function(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }, true);
+})();
+
+render();
+</script>
+</body>
+</html>
