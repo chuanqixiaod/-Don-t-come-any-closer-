@@ -6,6 +6,11 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🪑</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🪑</text></svg>">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#6366f1">
 <title>谁坐哪儿？· 排座位谜题 v0.3</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -1102,21 +1107,22 @@ function genShareCard(lv, stars){
   // 白色圆角卡片
   ctx.fillStyle='#ffffff'; roundRect(ctx,24,24,432,312,18); ctx.fill();
   // 标题
-  ctx.fillStyle='#4338ca'; ctx.font='bold 22px "Microsoft YaHei",sans-serif'; ctx.textAlign='center';
+  ctx.fillStyle='#4338ca'; ctx.font='bold 22px "Microsoft YaHei","PingFang SC",sans-serif'; ctx.textAlign='center';
   ctx.fillText('🎯 谁坐哪儿 · 排座位谜题',240,58);
   // 关卡信息
   ctx.fillStyle='#6b7280'; ctx.font='14px sans-serif';
   ctx.fillText(lv.name+' · '+lv.scene,240,82);
   // 星级
   var starStr=''; for(var i=0;i<3;i++) starStr += (i<stars?'★':'☆');
-  ctx.fillStyle='#f59e0b'; ctx.font='bold 40px sans-serif';
+  ctx.fillStyle='#f59e0b'; ctx.font='bold 40px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   ctx.fillText(starStr,240,128);
   // NPC/乘客墙（前 12 个）
   var allChars=[].concat(lv.chars);
   var npcPoolForCard=[];
   for(var r=0;r<lv.rows.length;r++) for(var c=0;c<lv.rows[r].length;c++) if(lv.rows[r][c]&&lv.rows[r][c].npc) npcPoolForCard.push(lv.rows[r][c].npc);
   var wall=allChars.concat(npcPoolForCard).slice(0,12);
-  ctx.font='32px sans-serif'; ctx.textAlign='center';
+  var emFont='32px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Android Emoji","Microsoft YaHei",sans-serif';
+  ctx.font=emFont; ctx.textAlign='center';
   var cols=6; var size=44; var gap=4;
   var wallTop=170;
   for(var j=0;j<wall.length;j++){
@@ -1503,7 +1509,10 @@ document.getElementById('btnClear').addEventListener('click',function(){
 });
 document.getElementById('btnNext').addEventListener('click',function(){
   if(_isEndless){
-    _endlessDiff = Math.min(98, _endlessDiff + 10);
+    // 根据上一关星级动态调难度：3★+15 2★+10 1★+5
+    var lastStars = bestStars[cur] || 1;
+    var stepInc = lastStars>=3 ? 15 : (lastStars>=2 ? 10 : 5);
+    _endlessDiff = Math.min(98, _endlessDiff + stepInc);
     LEVELS.pop(); pushEndlessLevel();
     SoundFX.win(); return;
   }
