@@ -12,6 +12,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#6366f1">
 <title>谁坐哪儿？· 排座位谜题 v0.3</title>
+<link rel="manifest" href="manifest.json">
+<!-- Open Graph 社交分享 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="谁坐哪儿？· 排座位逻辑谜题">
+<meta property="og:description" content="通勤高峰期，让所有人舒心坐下～ 给乘客安排座位，满足每个人的性格约束。60 关主线 + 无尽模式 + 每日挑战。">
+<meta property="og:image" content="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 360'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%236366f1'/><stop offset='1' stop-color='%238b5cf6'/></linearGradient></defs><rect width='480' height='360' fill='url(%23g)'/><rect x='24' y='24' width='432' height='312' rx='18' fill='white'/><text x='240' y='58' text-anchor='middle' font-size='22' font-weight='bold' fill='%234338ca' font-family='sans-serif'>🪑 谁坐哪儿 · 排座位谜题</text><text x='240' y='120' text-anchor='middle' font-size='56' fill='%23f59e0b'>★★★</text><text x='240' y='220' text-anchor='middle' font-size='140'>🚌</text><text x='240' y='320' text-anchor='middle' font-size='12' fill='%236b7280'>🚀 来挑战你能排到第几关？</text></svg>">
+<meta property="og:url" content="https://chuanqixiaod.github.io/-Don-t-come-any-closer-/prototype.html">
+<meta property="og:site_name" content="谁坐哪儿">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{
@@ -47,6 +56,26 @@
   body.theme-toon .scene-name{color:#e17055;}
   body.theme-toon .lvl-num{color:#e17055;}
   body.theme-toon .tcard .em{font-size:22px;}
+  /* ===== 夜间黑 ===== */
+  body.theme-dark{
+    --c-primary:#a78bfa; --c-primary2:#818cf8;
+    --c-bg1:#0f172a; --c-bg2:#1e293b;
+    --c-card:#1e293b; --c-text:#e2e8f0;
+    --c-seat-fill:#334155; --c-seat-stroke:#64748b; --c-seat-window-fill:#1e3a5f; --c-seat-window-stroke:#60a5fa;
+    --shadow:0 4px 16px rgba(0,0,0,.4);
+  }
+  body.theme-dark{background:linear-gradient(160deg,#0f172a,#1e293b);}
+  body.theme-dark header{background:linear-gradient(135deg,#4c1d95,#312e81);}
+  body.theme-dark .scene-name{color:#c4b5fd;}
+  body.theme-dark .lvl-name{color:#a78bfa;}
+  body.theme-dark .tip{background:#1e293b;color:#94a3b8;}
+  body.theme-dark .scene-card{background:#1e293b;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  body.theme-dark .tcard{background:#334155;border-color:#475569;}
+  body.theme-dark .tcard .nm{color:#c4b5fd;}
+  body.theme-dark .tcard .tr{color:#94a3b8;}
+  body.theme-dark .tcard.sel{background:#4c1d95;border-color:#a78bfa;}
+  body.theme-dark .feedback{background:#1e293b;}
+  body.theme-dark .foot{color:#64748b;}
   /* ===== Safe-area + 触控优化 ===== */
   main{padding-bottom:calc(24px + env(safe-area-inset-bottom));}
   header{padding-top:calc(14px + env(safe-area-inset-top));}
@@ -352,6 +381,7 @@
     <button class="btn-sec" id="btnReset">🔄 重排本关</button>
     <button class="btn-sec" id="btnHelp">❓ 玩法说明</button>
     <button class="btn-sec" id="btnTheme" title="切换主题">🎨 风格</button>
+    <button class="btn-sec" id="btnSound" title="开关音效">🔊 音效</button>
     <button class="btn-sec" id="btnClear" title="清除所有本地存档（关卡解锁 + 最佳星级）">🧹 清进度</button>
   </div>
   <div class="feedback" id="feedback"></div>
@@ -400,40 +430,6 @@
   </div>
 </div>
 
-<!-- 开发调试面板 -->
-<div class="overlay hidden" id="devPanel">
-  <div class="win-card" style="max-width:440px; text-align:left;">
-    <div class="win-title" style="text-align:center;">🔧 开发调试面板</div>
-    
-    <div style="margin-top:18px;">
-      <b>① 10 个手工关解数验证</b>
-      <div id="solverReport" style="font-size:11px; font-family:monospace; background:#eef2ff; padding:10px; border-radius:8px; margin-top:6px; max-height:160px; overflow-y:auto;"></div>
-      <button class="btn-sec" id="btnRunSolver" style="margin-top:8px;">▶ 跑一遍</button>
-      <button class="btn-sec" id="btnRunP0Test" style="margin-top:8px; background:#dcfce7; color:#166534;">🎯 一键 P0 闭环自测</button>
-    </div>
-    
-    <div style="margin-top:18px; border-top:1px dashed #c7d2fe; padding-top:14px;">
-      <b>② 关卡生成器</b>
-      <div style="margin-top:8px; font-size:13px; display:flex; align-items:center; gap:6px;">
-        难度
-        <input type="range" id="diffSlider" min="1" max="100" value="50" style="flex:1;">
-        <span id="diffVal" style="min-width:24px; text-align:right; font-weight:700; color:#6366f1;">50</span>
-      </div>
-      <div style="font-size:13px; margin-top:6px; display:flex; align-items:center; gap:8px;">
-        种子
-        <input type="number" id="seedInput" value="1" min="1" style="width:90px; border:1px solid #c7d2fe; border-radius:6px; padding:3px 8px;">
-        <button class="btn-pri" id="btnGen" style="padding:6px 14px;">🎲 生成</button>
-      </div>
-      <div id="genResult" style="font-size:12px; margin-top:8px; font-family:monospace; line-height:1.5;"></div>
-      <button class="btn-sec" id="btnPlayGen" style="margin-top:6px;">💡 把生成关灌进关卡池试玩</button>
-    </div>
-    
-    <div style="margin-top:16px; text-align:center;">
-      <button class="btn-sec" id="btnCloseDev">关闭</button>
-    </div>
-  </div>
-</div>
-
 <script>
 var TRAIT_META = {
   window:{chip:'🪟非窗不坐'},
@@ -448,297 +444,7 @@ function n(id,e,name,color,traits,line){
   return {id:id,emoji:e,name:name,color:color,traits:traits,line:line};
 }
 
-var LEVELS = [
-  {
-    name:'第 1 关',scene:'🚌 公交车',
-    tip:'点下方乘客卡片选中，再点空座位安顿 TA。带 🪟 的座位靠窗。',
-    rows:[[{}, {w:1}],[{}, {w:1}]],
-    pairs:null,
-    chars:[
-      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
-      n('koala','🐨','二白','#d1fae5',[],'都可以啦')
-    ],
-    done:'靠窗位只有一个，先满足有要求的乘客。'
-  },
-  {
-    name:'第 2 关',scene:'🚌 公交车',
-    tip:'唠嗑王身边必须有人；怕吵的人不能挨着唠嗑王。空座位也是可以用的！',
-    rows:[[{}, {}, {}],[{}, {}, {}]],
-    pairs:null,
-    chars:[
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
-      n('pig','🐷','三白','#fef9c3',[],'都行都行'),
-      n('cow','🐮','老白','#e0f2fe',[],'随便随便')
-    ],
-    done:'让大壮挨着心大的乘客，阿静离他远一点。'
-  },
-  {
-    name:'第 3 关',scene:'🎬 电影院',
-    tip:'小情侣必须挨着坐（上下左右相邻才算挨着）。',
-    rows:[[{}, {}, {}],[{}, {}, {}]],
-    pairs:[{type:'couple',a:'cat',b:'dog'}],
-    chars:[
-      n('cat','🐱','糖糖','#fce7f3',[],'要和毛毛挨着！'),
-      n('dog','🐶','毛毛','#fef3c7',[],'要和糖糖挨着！'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
-      n('koala','🐨','二白','#d1fae5',[],'都可以啦')
-    ],
-    done:'把情侣当一个整体来摆位。'
-  },
-  {
-    name:'第 4 关',scene:'🚄 高铁',
-    tip:'冤家路窄：这两位绝对不能挨着（上下左右都不行）。',
-    rows:[[{}, {}, {}],[{}, {}, {}]],
-    pairs:[{type:'rivals',a:'tiger',b:'monkey'}],
-    chars:[
-      n('tiger','🐯','头子','#fef3c7',[],'看见皮蛋就来气'),
-      n('monkey','🐵','皮蛋','#fde68a',[],'看见头子就来气'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行')
-    ],
-    done:'大壮反而成了隔开冤家的天然屏障。'
-  },
-  {
-    name:'第 5 关',scene:'🎬 影院首映',
-    tip:'前排控坐后面就晕；窗位在右边一列。一个人可以同时有两个要求哦。',
-    rows:[[{}, {}, {w:1}],[{}, {}, {w:1}]],
-    pairs:null,
-    chars:[
-      n('frog','🐸','小前','#d1fae5',['front'],'坐后面我就晕'),
-      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行')
-    ],
-    done:'两个硬约束（前排、靠窗）先钉死，剩下的再排。'
-  },
-  {
-    name:'第 6 关',scene:'🚄 高铁',
-    tip:'香水哥自己没有要求——但他旁边的人可有意见。',
-    rows:[[{}, {}, {}],[{}, {}, {}]],
-    pairs:null,
-    chars:[
-      n('lion','🦁','型仔','#fef3c7',['scented'],'香水两米八，自信满满'),
-      n('panda','🐼','小敏','#e0e7ff',['smellSensitive'],'闻到香水就打喷嚏'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行')
-    ],
-    done:'没有约束的角色，是排开冲突的缓冲垫。'
-  },
-  {
-    name:'第 7 关',scene:'🚌 大巴',
-    tip:'三种要求同场：靠窗、前排、怕吵加唠嗑王。坐满 6 座！',
-    rows:[[{}, {w:1}],[{}, {w:1}],[{}, {w:1}]],
-    pairs:null,
-    chars:[
-      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
-      n('frog','🐸','小前','#d1fae5',['front'],'坐后面我就晕'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
-      n('koala','🐨','二白','#d1fae5',[],'都可以啦')
-    ],
-    done:'先钉死前排和靠窗，唠嗑王放最后一排找个伴。'
-  },
-  {
-    name:'第 8 关',scene:'🍜 食堂',
-    tip:'今天来了两位唠嗑王——他们俩挨着坐，正好互相倾诉！',
-    rows:[[{}, {}, {}, {}],[{}, {}, {}, {}]],
-    pairs:null,
-    chars:[
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('myna','🦜','八哥','#fef3c7',['loud'],'话痨鸟，必须有人听我说！'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('squi','🐿️','文文','#fde68a',['quiet'],'请让我安静吃饭'),
-      n('ham','🐹','小白','#e0e7ff',[],'坐哪儿都行'),
-      n('pig','🐷','三白','#fef9c3',[],'都行都行'),
-      n('cow','🐮','老白','#e0f2fe',[],'随便随便'),
-      n('hedge','🦔','小黑','#ede9fe',[],'嗯。')
-    ],
-    done:'同类相吸：两个唠嗑王绑在一起，怕吵的全挪远。'
-  },
-  {
-    name:'第 9 关',scene:'💃 婚礼酒席',
-    tip:'五类要求同场：窗位在左边一列。新郎新娘谢谢你！',
-    rows:[[ {w:1},{},{},{} ],[ {w:1},{},{},{} ]],
-    pairs:[{type:'couple',a:'cat',b:'dog'}],
-    chars:[
-      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
-      n('cat','🐱','糖糖','#fce7f3',[],'要和毛毛挨着！'),
-      n('dog','🐶','毛毛','#fde68a',[],'要和糖糖挨着！'),
-      n('lion','🦁','型仔','#fee2e2',['scented'],'香水两米八，自信满满'),
-      n('panda','🐼','小敏','#e0e7ff',['smellSensitive'],'闻到香水就打喷嚏'),
-      n('bear','🐻','大壮','#fef9c3',['loud'],'一个人坐我难受！'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('ham','🐹','小白','#d1fae5',[],'坐哪儿都行')
-    ],
-    done:'前八关的总复习：先钉硬约束，再塞缓冲垫。'
-  },
-  {
-    name:'第 10 关',scene:'🏫 教室家长会',
-    tip:'终极考场：3×3 坐满，两边都是窗位，第一排是讲台前。祝好运！',
-    rows:[[ {w:1},{},{w:1} ],[ {w:1},{},{w:1} ],[ {w:1},{},{w:1} ]],
-    pairs:[{type:'couple',a:'cat',b:'dog'}],
-    chars:[
-      n('fox','🦊','阿窗','#fef3c7',['window'],'没有窗我看不了风景！'),
-      n('owl','🦉','博士','#e0e7ff',['window'],'学问人，只坐窗边'),
-      n('frog','🐸','小前','#d1fae5',['front'],'坐后面我就晕'),
-      n('rabbit','🐰','阿静','#fce7f3',['quiet'],'旁边太吵我会晕车'),
-      n('bear','🐻','大壮','#fee2e2',['loud'],'一个人坐我难受！'),
-      n('cat','🐱','糖糖','#fce7f3',[],'要和毛毛挨着！'),
-      n('dog','🐶','毛毛','#fde68a',[],'要和糖糖挨着！'),
-      n('lion','🦁','型仔','#fef9c3',['scented'],'香水两米八，自信满满'),
-      n('panda','🐼','小敏','#e0f2fe',['smellSensitive'],'闻到香水就打喷嚏')
-    ],
-    done:'🎉 前 10 关通关！还有 20 关等你——点击顶部「选关」继续挑战～'
-  },
-  {
-    id:11,name:'第 11 关',scene:'🚌 大巴',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:null,
-    chars:[n('g0','🐻','乘客1','#fef3c7',[],'随便坐'),n('g1','🐨','乘客2','#e0f2fe',['window'],'随便坐'),n('g2','🐼','乘客3','#e0f2fe',[],'随便坐'),n('g3','🐶','乘客4','#e0e7ff',[],'随便坐'),n('g4','🐸','乘客5','#fef9c3',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:12,name:'第 12 关',scene:'🚌 公交车',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{}],[{},{},{}]],pairs:null,
-    chars:[n('g0','🦜','乘客1','#d1fae5',[],'随便坐'),n('g1','🐱','乘客2','#e0f2fe',[],'随便坐'),n('g2','🦉','乘客3','#e0e7ff',[],'随便坐'),n('g3','🦊','乘客4','#d1fae5',[],'随便坐'),n('g4','🐰','乘客5','#e0f2fe',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:13,name:'第 13 关',scene:'🚄 高铁',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{}],[{},{},{}]],pairs:null,
-    chars:[n('g0','🐻','乘客1','#e0f2fe',[],'随便坐'),n('g1','🦔','乘客2','#e0f2fe',[],'随便坐'),n('g2','🦉','乘客3','#ede9fe',[],'随便坐'),n('g3','🐰','乘客4','#d1fae5',[],'随便坐'),n('g4','🐸','乘客5','#bae6fd',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:14,name:'第 14 关',scene:'🎬 电影院',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{}],[{},{},{}]],pairs:null,
-    chars:[n('g0','🐱','乘客1','#e0e7ff',[],'随便坐'),n('g1','🐨','乘客2','#e0f2fe',[],'随便坐'),n('g2','🐱','乘客3','#fee2e2',[],'随便坐'),n('g3','🐱','乘客4','#fde68a',[],'随便坐'),n('g4','🦊','乘客5','#fef3c7',['front'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:15,name:'第 15 关',scene:'🎬 电影院',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{}],[{},{},{}]],pairs:null,
-    chars:[n('g0','🦊','乘客1','#ede9fe',[],'随便坐'),n('g1','🦔','乘客2','#fef9c3',[],'随便坐'),n('g2','🐮','乘客3','#fee2e2',[],'随便坐'),n('g3','🐼','乘客4','#bae6fd',[],'随便坐'),n('g4','🦔','乘客5','#ede9fe',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:16,name:'第 16 关',scene:'🍜 食堂',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:null,
-    chars:[n('g0','🐱','乘客1','#fde68a',[],'随便坐'),n('g1','🐻','乘客2','#fde68a',[],'随便坐'),n('g2','🐼','乘客3','#fde68a',['front'],'随便坐'),n('g3','🐨','乘客4','#fef9c3',[],'随便坐'),n('g4','🐮','乘客5','#bae6fd',[],'随便坐'),n('g5','🦔','乘客6','#fce7f3',[],'随便坐'),n('g6','🐷','乘客7','#ede9fe',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:17,name:'第 17 关',scene:'🏫 教室家长会',
-    tip:'试试让所有人都满意！',
-    rows:[[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]],pairs:null,
-    chars:[n('g0','🦁','乘客1','#fef3c7',[],'随便坐'),n('g1','🐶','乘客2','#e0f2fe',[],'随便坐'),n('g2','🐶','乘客3','#d1fae5',[],'随便坐'),n('g3','🦁','乘客4','#ede9fe',[],'随便坐'),n('g4','🐻','乘客5','#fce7f3',[],'随便坐'),n('g5','🐻','乘客6','#fef3c7',[],'随便坐'),n('g6','🦜','乘客7','#ede9fe',['loud'],'随便坐'),n('g7','🐱','乘客8','#fde68a',['loud'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:18,name:'第 18 关',scene:'🎬 电影院',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{}],[{},{},{}]],pairs:null,
-    chars:[n('g0','🐿️','乘客1','#d1fae5',['front'],'随便坐'),n('g1','🐮','乘客2','#e0e7ff',['loud'],'随便坐'),n('g2','🐱','乘客3','#bae6fd',[],'随便坐'),n('g3','🐷','乘客4','#e0e7ff',[],'随便坐'),n('g4','🐯','乘客5','#bae6fd',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:19,name:'第 19 关',scene:'🏫 教室家长会',
-    tip:'试试让所有人都满意！',
-    rows:[[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]],pairs:null,
-    chars:[n('g0','🦉','乘客1','#fde68a',[],'随便坐'),n('g1','🐨','乘客2','#e0e7ff',[],'随便坐'),n('g2','🐰','乘客3','#bae6fd',[],'随便坐'),n('g3','🐶','乘客4','#fef3c7',['window'],'随便坐'),n('g4','🐿️','乘客5','#fef3c7',[],'随便坐'),n('g5','🐹','乘客6','#bae6fd',[],'随便坐'),n('g6','🐮','乘客7','#d1fae5',[],'随便坐'),n('g7','🦜','乘客8','#d1fae5',['loud'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:20,name:'第 20 关',scene:'💃 婚礼酒席',
-    tip:'试试让所有人都满意！',
-    rows:[[{w:1},{},{},{}],[{w:1},{},{},{}]],pairs:null,
-    chars:[n('g0','🐮','乘客1','#fce7f3',['front'],'随便坐'),n('g1','🐨','乘客2','#fde68a',['loud'],'随便坐'),n('g2','🐹','乘客3','#fce7f3',[],'随便坐'),n('g3','🐼','乘客4','#e0e7ff',['loud'],'随便坐'),n('g4','🦜','乘客5','#ede9fe',[],'随便坐'),n('g5','🐱','乘客6','#bae6fd',[],'随便坐'),n('g6','🐨','乘客7','#bae6fd',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:21,name:'第 21 关',scene:'🚌 公交车',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{}],[{},{},{}]],pairs:null,
-    chars:[n('g0','🐼','乘客1','#d1fae5',[],'随便坐'),n('g1','🐰','乘客2','#fef9c3',[],'随便坐'),n('g2','🦜','乘客3','#fef9c3',['front'],'随便坐'),n('g3','🦉','乘客4','#fee2e2',['front'],'随便坐'),n('g4','🐶','乘客5','#fde68a',['quiet'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:22,name:'第 22 关',scene:'🚌 大巴',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:null,
-    chars:[n('g0','🐿️','乘客1','#fef9c3',[],'随便坐'),n('g1','🦔','乘客2','#bae6fd',['loud'],'随便坐'),n('g2','🦔','乘客3','#fde68a',[],'随便坐'),n('g3','🐰','乘客4','#e0f2fe',['window'],'随便坐'),n('g4','🐮','乘客5','#d1fae5',['window'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:23,name:'第 23 关',scene:'🚌 大巴',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:null,
-    chars:[n('g0','🐰','乘客1','#fde68a',[],'随便坐'),n('g1','🐿️','乘客2','#e0e7ff',['scented'],'随便坐'),n('g2','🐯','乘客3','#fee2e2',['window'],'随便坐'),n('g3','🐼','乘客4','#e0e7ff',['quiet'],'随便坐'),n('g4','🐰','乘客5','#e0f2fe',['front'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:24,name:'第 24 关',scene:'💃 婚礼酒席',
-    tip:'试试让所有人都满意！',
-    rows:[[{w:1},{},{},{}],[{w:1},{},{},{}]],pairs:null,
-    chars:[n('g0','🐯','乘客1','#ede9fe',[],'随便坐'),n('g1','🦔','乘客2','#bae6fd',[],'随便坐'),n('g2','🐯','乘客3','#bae6fd',['scented'],'随便坐'),n('g3','🐸','乘客4','#fce7f3',['quiet'],'随便坐'),n('g4','🦜','乘客5','#fee2e2',['smellSensitive'],'随便坐'),n('g5','🦁','乘客6','#fef9c3',['smellSensitive'],'随便坐'),n('g6','🐯','乘客7','#ede9fe',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:25,name:'第 25 关',scene:'🍜 食堂',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:null,
-    chars:[n('g0','🐱','乘客1','#d1fae5',[],'随便坐'),n('g1','🐮','乘客2','#fce7f3',[],'随便坐'),n('g2','🦔','乘客3','#fde68a',['scented'],'随便坐'),n('g3','🐹','乘客4','#fce7f3',['smellSensitive'],'随便坐'),n('g4','🦜','乘客5','#e0e7ff',[],'随便坐'),n('g5','🐨','乘客6','#e0e7ff',['loud'],'随便坐'),n('g6','🐷','乘客7','#fce7f3',['smellSensitive'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:26,name:'第 26 关',scene:'🍜 食堂',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:null,
-    chars:[n('g0','🐻','乘客1','#fef9c3',['loud'],'随便坐'),n('g1','🐱','乘客2','#bae6fd',['smellSensitive'],'随便坐'),n('g2','🦁','乘客3','#fef3c7',[],'随便坐'),n('g3','🐸','乘客4','#e0f2fe',[],'随便坐'),n('g4','🦔','乘客5','#e0e7ff',['scented'],'随便坐'),n('g5','🐶','乘客6','#fef9c3',['scented'],'随便坐'),n('g6','🐸','乘客7','#fce7f3',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:27,name:'第 27 关',scene:'🚌 大巴',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{w:1}],[{},{w:1}],[{},{w:1}]],pairs:[{type:'couple',a:'g0',b:'g1'}],
-    chars:[n('g0','🐿️','乘客1','#fce7f3',['loud'],'随便坐'),n('g1','🦁','乘客2','#bae6fd',['scented'],'随便坐'),n('g2','🐱','乘客3','#fce7f3',['scented'],'随便坐'),n('g3','🐸','乘客4','#ede9fe',['loud'],'随便坐'),n('g4','🐰','乘客5','#fef3c7',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:28,name:'第 28 关',scene:'🏫 教室家长会',
-    tip:'试试让所有人都满意！',
-    rows:[[{w:1},{},{w:1}],[{w:1},{},{w:1}],[{w:1},{},{w:1}]],pairs:[{type:'couple',a:'g0',b:'g1'}],
-    chars:[n('g0','🐯','乘客1','#e0e7ff',['loud'],'随便坐'),n('g1','🐷','乘客2','#ede9fe',['smellSensitive'],'随便坐'),n('g2','🐱','乘客3','#bae6fd',[],'随便坐'),n('g3','🐱','乘客4','#e0e7ff',[],'随便坐'),n('g4','🦉','乘客5','#fce7f3',[],'随便坐'),n('g5','🐿️','乘客6','#fef9c3',['loud'],'随便坐'),n('g6','🐵','乘客7','#fee2e2',['smellSensitive'],'随便坐'),n('g7','🐰','乘客8','#fde68a',[],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:29,name:'第 29 关',scene:'💃 婚礼酒席',
-    tip:'试试让所有人都满意！',
-    rows:[[{w:1},{},{},{}],[{w:1},{},{},{}]],pairs:[{type:'rivals',a:'g0',b:'g1'}],
-    chars:[n('g0','🦁','乘客1','#e0f2fe',[],'随便坐'),n('g1','🦜','乘客2','#fef3c7',['smellSensitive'],'随便坐'),n('g2','🐻','乘客3','#e0e7ff',[],'随便坐'),n('g3','🦁','乘客4','#fee2e2',['window'],'随便坐'),n('g4','🐶','乘客5','#e0e7ff',['loud'],'随便坐'),n('g5','🦔','乘客6','#fde68a',[],'随便坐'),n('g6','🐵','乘客7','#bae6fd',['quiet'],'随便坐')],
-    done:'过关！继续挑战'
-  },
-  {
-    id:30,name:'第 30 关',scene:'🍜 食堂',
-    tip:'试试让所有人都满意！',
-    rows:[[{},{},{},{}],[{},{},{},{}]],pairs:[{type:'rivals',a:'g0',b:'g1'}],
-    chars:[n('g0','🐯','乘客1','#fce7f3',['quiet'],'随便坐'),n('g1','🐮','乘客2','#fef9c3',['scented'],'随便坐'),n('g2','🐱','乘客3','#fde68a',[],'随便坐'),n('g3','🦜','乘客4','#ede9fe',['front'],'随便坐'),n('g4','🦔','乘客5','#e0f2fe',[],'随便坐'),n('g5','🦁','乘客6','#bae6fd',[],'随便坐'),n('g6','🐻','乘客7','#d1fae5',['smellSensitive'],'随便坐')],
-    done:'🎉 全 30 关通关！你是排座大师！分享给朋友试试看？'
-  }
-];
+<script src="levels.js"></script>
 
 // ============ 强制重建 id 11-60（generateLevel + 固定 seed，全部带 NPC 难度梯度） ============
 (function(){
@@ -1345,6 +1051,29 @@ function render(){
       }
       (function(rr,cc){
         el.addEventListener('click',function(){ onSeatClick(rr,cc); });
+        // 长按座位：高亮此座位上乘客的约束结果（冲突乘客闪红色动画）
+        var pressTimer = null;
+        el.addEventListener('touchstart', function(){
+          pressTimer = setTimeout(function(){
+            var pid = placementOf(rr,cc);
+            if(pid){
+              var ev = evaluatePure(LEVELS[cur], placement);
+              // 找出对 pid 乘客的评估结果
+              for(var id in ev.results){
+                if(id === pid && !ev.results[id].ok){
+                  // 找到不满！震动 + 闪红
+                  vibrate([50,50,50]);
+                  showBanner('⚠️ ' + ev.results[id].reason);
+                  // 让该乘客的 emoji 闪红
+                  var pc = el.querySelector('.pchar');
+                  if(pc){ pc.classList.add('anim-angry'); setTimeout(function(){ pc.classList.remove('anim-angry'); }, 2000); }
+                }
+              }
+            }
+          }, 500);
+        }, {passive:true});
+        el.addEventListener('touchend', function(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } });
+        el.addEventListener('touchmove', function(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }, {passive:true});
       })(r,c);
       g.appendChild(el);
     }
@@ -1400,6 +1129,7 @@ function render(){
 function showWin(){
   var lv=LEVELS[cur];
   SoundFX.win();
+  vibrate([100,50,100,50,200]);
   var stars=calcStars(steps,lv.chars.length);
   var prev=bestStars[cur]||0;
   if(stars>prev){ bestStars[cur]=stars; }
@@ -1468,10 +1198,10 @@ document.addEventListener('keydown', function(e){
 function onSeatClick(r,c){
   pushUndo();
   var pid=placementOf(r,c);
-  if(pid){ delete placement[pid]; SoundFX.undo(); }
+  if(pid){ delete placement[pid]; SoundFX.undo(); vibrate(30); }
   else if(selected){
     var placedChar = charById(LEVELS[cur], selected);
-    placement[selected]={r:r,c:c}; selected=null; SoundFX.place();
+    placement[selected]={r:r,c:c}; selected=null; SoundFX.place(); vibrate(15);
     triggerNpcReact(r, c, placedChar);
   }
   else { SoundFX.select(); }
@@ -2003,150 +1733,6 @@ function generateLevel(difficulty, seed) {
   return null;
 }
 
-// ======= 调试面板绑定 =======
-document.getElementById('btnRunSolver').addEventListener('click', function() {
-  var report = [];
-  for (var i = 0; i < LEVELS.length; i++) {
-    var lv = LEVELS[i];
-    var t0 = performance.now();
-    var res = solveAll(lv, 5);
-    var ms = (performance.now() - t0).toFixed(1);
-    var status = res.solutions.length === 0 ? '❌ 无解' : ('✅ ' + res.solutions.length + ' 解');
-    report.push((i+1) + '. ' + lv.name + ' → ' + status + ' | 节点=' + res.nodeCount + ' | ' + ms + 'ms');
-  }
-  document.getElementById('solverReport').innerHTML = report.join('<br>');
-});
-
-document.getElementById('btnRunP0Test').addEventListener('click', function() {
-  // P0 闭环全自动自测
-  var report = [];
-  var allPass = true;
-  var lines = ['<b>🎯 P0 闭环自测结果</b><br>'];
-  lines.push('<table style="font-size:11px;border-collapse:collapse;width:100%;">');
-  lines.push('<tr style="background:#ede9fe;"><th>#</th><th>关卡</th><th>场景</th><th>chars</th><th>解数</th><th>节点</th><th>3★阈值</th><th>通过</th></tr>');
-
-  function calcStarsP0(s,t){
-    if(s<=t) return 3;
-    if(s<=Math.ceil(t*1.5)) return 2;
-    if(s<=Math.ceil(t*2)) return 1;
-    return 0;
-  }
-
-  for (var i = 0; i < LEVELS.length; i++) {
-    var lv = LEVELS[i];
-    var t0 = performance.now();
-    var slv = solveAll(lv, 3);
-    var ms = (performance.now() - t0).toFixed(1);
-    var ideal = lv.chars.length;
-
-    // Check 1: 有解
-    var pass1 = slv.solutions.length >= 1;
-    // Check 2: 所有解 evaluatePure 全 ok
-    var pass2 = true;
-    for (var si = 0; si < slv.solutions.length; si++) {
-      var ev = evaluatePure(lv, slv.solutions[si]);
-      if (!ev.allPlaced) { pass2 = false; break; }
-      for (var id in ev.results) { if (!ev.results[id].ok) { pass2 = false; break; } }
-      if (!pass2) break;
-    }
-    // Check 3: 三星公式边界
-    var pass3 = calcStarsP0(ideal, ideal)===3
-             && calcStarsP0(Math.ceil(ideal*1.5), ideal)>=2
-             && calcStarsP0(Math.ceil(ideal*2), ideal)>=1
-             && calcStarsP0(ideal*2+1, ideal)===0;
-    // Check 4: 节点 ≤ 200（原型 10 关应该很轻松）
-    var pass4 = slv.nodeCount <= 500;
-
-    var pass = pass1 && pass2 && pass3 && pass4;
-    if (!pass) allPass = false;
-
-    var mark = pass ? '✅' : '❌';
-    lines.push('<tr style="border-bottom:1px solid #e5e7eb;"><td>'+(i+1)+'</td><td>'+lv.name+'</td><td>'+lv.scene+'</td><td>'+lv.chars.length+'</td><td>'+slv.solutions.length+'</td><td>'+slv.nodeCount+'</td><td>≤'+ideal+'</td><td>'+mark+'</td></tr>');
-  }
-  lines.push('</table>');
-  lines.push('<br><b>' + (allPass ? '✅ 全部通过！P0 闭环 OK' : '❌ 存在失败项，请检查红色行') + '</b>');
-  lines.push('<br><b>测试覆盖：</b>① solver 有解 ② 解满足全部约束 ③ 三星评级公式边界 ④ 节点数正常');
-
-  document.getElementById('solverReport').innerHTML = lines.join('');
-  console.log('🧹 P0 自测完成，结论：' + (allPass ? '✅ ALL PASS' : '❌ HAS FAILURES'));
-});
-
-document.getElementById('diffSlider').addEventListener('input', function() {
-  document.getElementById('diffVal').textContent = this.value;
-});
-
-document.getElementById('btnGen').addEventListener('click', function() {
-  var diff = parseInt(document.getElementById('diffSlider').value, 10);
-  var seed = parseInt(document.getElementById('seedInput').value, 10);
-  var t0 = performance.now();
-  var lv = generateLevel(diff, seed);
-  var ms = (performance.now() - t0).toFixed(1);
-  
-  if (!lv) {
-    document.getElementById('genResult').innerHTML = '<span style="color:#c0392b;">❌ 80 次重试仍无解</span>';
-    return;
-  }
-  
-  var seatList = [];
-  for (var r = 0; r < lv.rows.length; r++)
-    for (var c = 0; c < lv.rows[r].length; c++)
-      if (lv.rows[r][c] !== null) seatList.push([r, c]);
-  
-  var traitSummary = {};
-  for (var i = 0; i < lv.chars.length; i++) {
-    for (var t = 0; t < lv.chars[i].traits.length; t++) {
-      var tt = lv.chars[i].traits[t];
-      traitSummary[tt] = (traitSummary[tt] || 0) + 1;
-    }
-  }
-  var traitStr = Object.keys(traitSummary).map(function(k) { return k + '×' + traitSummary[k]; }).join(' ');
-  var pairStr = lv.pairs ? lv.pairs.map(function(p) { return p.type; }).join(',') : '无';
-  
-  generatedLevel = lv; // 存入全局，供试玩按钮使用
-  
-  document.getElementById('genResult').innerHTML =
-    '<b style="color:#059669;">✅ 生成成功</b> | ' + ms + 'ms<br>' +
-    '场景: ' + lv.scene + ' | 难度: ' + diff + '<br>' +
-    '座位: ' + seatList.length + ' | 角色: ' + lv.chars.length + '<br>' +
-    '约束: ' + (traitStr || '无') + ' | pairs: ' + pairStr + '<br>' +
-    'solver: ' + lv.solutionCount + ' 解 | 节点: ' + lv.nodeCount + '<br>' +
-    '<span style="color:#059669;">可直接灌进关卡池试玩 ↓</span>';
-});
-
-var generatedLevel = null;
-document.getElementById('btnPlayGen').addEventListener('click', function() {
-  if (!generatedLevel) {
-    document.getElementById('genResult').innerHTML += '<br><span style="color:#c0392b;">⚠️ 先生成一关！</span>';
-    return;
-  }
-  // 把生成关卡追加到关卡池，然后跳转到它
-  LEVELS.push(generatedLevel);
-  cur = LEVELS.length - 1;
-  unlocked = cur;
-  placement = {};
-  selected = null;
-  won = false;
-  document.getElementById('devPanel').classList.add('hidden');
-  render();
-});
-
-// 给调试面板加一个唤出入口：点击 logo 3 次打开
-var logoClickCount = 0;
-var logoClickTimer = null;
-document.querySelector('.logo').addEventListener('click', function() {
-  logoClickCount++;
-  if (logoClickTimer) clearTimeout(logoClickTimer);
-  logoClickTimer = setTimeout(function() { logoClickCount = 0; }, 1500);
-  if (logoClickCount >= 3) {
-    logoClickCount = 0;
-    document.getElementById('devPanel').classList.remove('hidden');
-  }
-});
-
-document.getElementById('btnCloseDev').addEventListener('click', function() {
-  document.getElementById('devPanel').classList.add('hidden');
-});
-
 // ============ 音效系统（Web Audio API，零外部文件） ============
 var SoundFX = (function(){
   var ctx = null;
@@ -2425,11 +2011,11 @@ resetLevel = function(){
 
 // ============ 主题切换 ============
 var _THEME_KEY = 'sqp_theme_v1';
-var THEMES = ['','theme-ink','theme-toon']; // ''=默认紫
+var THEMES = ['','theme-ink','theme-toon','theme-dark'];
 var _themeIdx = 0;
 try{ _themeIdx = parseInt(localStorage.getItem(_THEME_KEY)||'0',10)||0; }catch(e){}
 function applyTheme(){
-  document.body.classList.remove('theme-ink','theme-toon');
+  document.body.classList.remove('theme-ink','theme-toon','theme-dark');
   document.body.className = document.body.className + ' ' + THEMES[_themeIdx];
 }
 applyTheme();
@@ -2437,9 +2023,30 @@ document.getElementById('btnTheme').addEventListener('click', function(){
   _themeIdx = (_themeIdx + 1) % THEMES.length;
   applyTheme();
   try{ localStorage.setItem(_THEME_KEY, _themeIdx); }catch(e){}
-  var names = ['默认紫','国风红','卡通橙'];
+  var names = ['默认紫','国风红','卡通橙','夜间黑'];
   showBanner('🎨 '+names[_themeIdx]+'主题');
 });
+
+// ============ 音效开关 + 触感反馈 ============
+var _SOUND_KEY = 'sqp_sound_v1';
+var _soundOn = true;
+try{ _soundOn = localStorage.getItem(_SOUND_KEY) !== '0'; }catch(e){}
+SoundFX.enabled = _soundOn;
+var _btnSound = document.getElementById('btnSound');
+_btnSound.textContent = _soundOn ? '🔊 音效' : '🔇 静音';
+document.getElementById('btnSound').addEventListener('click', function(){
+  _soundOn = !_soundOn;
+  SoundFX.enabled = _soundOn;
+  this.textContent = _soundOn ? '🔊 音效' : '🔇 静音';
+  try{ localStorage.setItem(_SOUND_KEY, _soundOn?'1':'0'); }catch(e){}
+  showBanner(_soundOn ? '🔊 音效已开' : '🔇 音效已关');
+});
+// 触感反馈函数
+function vibrate(pattern){
+  if('vibrate' in navigator){
+    try{ navigator.vibrate(pattern); }catch(e){}
+  }
+}
 
 // ============ 无尽模式 ============
 var _isEndless = false;
@@ -2513,6 +2120,10 @@ function pushEndlessLevel(){
 })();
 
 render();
+// PWA: 注册 Service Worker（离线缓存）
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
 </script>
 </body>
 </html>
