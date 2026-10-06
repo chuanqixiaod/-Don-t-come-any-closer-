@@ -1,19 +1,18 @@
-// Service Worker: 离线缓存策略
-const CACHE = 'seatgame-v1';
-const PRECACHE = [
-  './',
-  './index.html',
-  './prototype.html',
-  './manifest.json'
-];
+// Service Worker: 离线缓存 v2
+const CACHE = 'seatgame-v2';
+const PRECACHE = ['./', './index.html', './prototype.html', './manifest.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
+// activate 时清掉旧版本缓存
 self.addEventListener('activate', e => {
-  e.waitUntil(self.clients.claim());
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
+  );
 });
 self.addEventListener('fetch', e => {
-  // 只缓存同源 HTML 文件（关卡生成是动态的，不需要缓存）
   const req = e.request;
   if (req.method !== 'GET') return;
   if (req.url.includes('github.io') || req.url.includes('localhost')) {

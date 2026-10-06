@@ -76,6 +76,51 @@
   body.theme-dark .tcard.sel{background:#4c1d95;border-color:#a78bfa;}
   body.theme-dark .feedback{background:#1e293b;}
   body.theme-dark .foot{color:#64748b;}
+  /* ===== 商务蓝 ===== */
+  body.theme-blue{
+    --c-primary:#3b82f6; --c-primary2:#2563eb;
+    --c-bg1:#eff6ff; --c-bg2:#dbeafe;
+    --c-card:#ffffff; --c-text:#1e3a8a;
+    --c-seat-fill:#dbeafe; --c-seat-stroke:#3b82f6; --c-seat-window-fill:#bfdbfe; --c-seat-window-stroke:#1d4ed8;
+  }
+  body.theme-blue{background:linear-gradient(160deg,#eff6ff,#dbeafe);}
+  body.theme-blue header{background:linear-gradient(135deg,#1e40af,#3b82f6);}
+  body.theme-blue .scene-name{color:#1e40af;}
+  body.theme-blue .lvl-name{color:#3b82f6;}
+  body.theme-blue .tcard.sel{background:#1e40af;border-color:#3b82f6;}
+  /* ===== 樱花粉 ===== */
+  body.theme-pink{
+    --c-primary:#ec4899; --c-primary2:#f472b6;
+    --c-bg1:#fdf2f8; --c-bg2:#fce7f3;
+    --c-card:#ffffff; --c-text:#9d174d;
+    --c-seat-fill:#fce7f3; --c-seat-stroke:#ec4899; --c-seat-window-fill:#fbcfe8; --c-seat-window-stroke:#be185d;
+  }
+  body.theme-pink{background:linear-gradient(160deg,#fdf2f8,#fce7f3);}
+  body.theme-pink header{background:linear-gradient(135deg,#be185d,#ec4899);}
+  body.theme-pink .scene-name{color:#9d174d;}
+  body.theme-pink .lvl-name{color:#ec4899;}
+  body.theme-pink .tcard.sel{background:#be185d;border-color:#ec4899;}
+  /* ===== 通关盖章动画 ===== */
+  .win-seal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+    font-size:80px;color:#dc2626;font-weight:900;
+    font-family:'Ma Shan Zheng','KaiTi','STKaiti',serif;
+    border:5px solid #dc2626;border-radius:18px;padding:6px 22px;
+    transform-origin:center;z-index:3;text-shadow:2px 2px 0 #fecaca;
+    background:rgba(255,255,255,.15);letter-spacing:8px;}
+  .win-celebrate .win-seal{animation:sealDrop .6s cubic-bezier(.34,1.56,.64,1) forwards .15s;}
+  @keyframes sealDrop{0%{transform:translate(-50%,-200%) scale(0) rotate(-30deg);opacity:0;}
+    60%{transform:translate(-50%,-45%) scale(1.3) rotate(5deg);opacity:1;}
+    80%{transform:translate(-50%,-55%) scale(.9) rotate(-2deg);}
+    100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:1;}}
+  .win-celebrate .win-star span{animation:starPop .4s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0;}
+  .win-celebrate .win-star span:nth-child(1){animation-delay:.4s;}
+  .win-celebrate .win-star span:nth-child(2){animation-delay:.55s;}
+  .win-celebrate .win-star span:nth-child(3){animation-delay:.7s;}
+  @keyframes starPop{0%{transform:scale(.3) rotate(-20deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
+  .win-particle{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none;
+    animation:particleOut 1s ease-out forwards;}
+  @keyframes particleOut{0%{transform:translate(0,0) scale(1);opacity:1;}
+    100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0;}}
   /* ===== Safe-area + 触控优化 ===== */
   main{padding-bottom:calc(24px + env(safe-area-inset-bottom));}
   header{padding-top:calc(14px + env(safe-area-inset-top));}
@@ -1136,13 +1181,31 @@ function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineT
 function showSharePreview(canvas){
   var ov=document.createElement('div'); ov.className='modal-overlay';
   var pn=document.createElement('div'); pn.className='modal';
-  var h=document.createElement('h3'); h.textContent='📤 分享卡片（长按图片保存）'; h.style.textAlign='center'; pn.appendChild(h);
+  var h=document.createElement('h3'); h.textContent='📤 分享卡片'; h.style.textAlign='center'; pn.appendChild(h);
   canvas.style.maxWidth='340px'; canvas.style.borderRadius='14px'; canvas.style.display='block'; canvas.style.margin='10px auto'; canvas.style.boxShadow='0 4px 20px rgba(0,0,0,.18)';
   pn.appendChild(canvas);
+  // 原生 Web Share API（iOS/Android 调起微信/QQ 菜单）
+  if(navigator.share && canvas.toBlob){
+    var blobShare = document.createElement('button');
+    blobShare.className='btn-pri'; blobShare.textContent='📱 原生分享';
+    blobShare.style.display='block'; blobShare.style.textAlign='center'; blobShare.style.marginTop='10px';
+    blobShare.addEventListener('click', function(){
+      canvas.toBlob(function(blob){
+        var file = new File([blob], 'seatgame-share.png', {type:'image/png'});
+        navigator.share({
+          title:'谁坐哪儿 · 排座位谜题',
+          text:'🎯 我通关了！来挑战你能排到第几关？',
+          url:location.href,
+          files:[file]
+        }).catch(function(){});
+      }, 'image/png');
+    });
+    pn.appendChild(blobShare);
+  }
   var dl=document.createElement('a');
   dl.download='seatgame-share-'+Date.now()+'.png';
   dl.href=canvas.toDataURL('image/png');
-  dl.className='btn-pri'; dl.textContent='💾 下载图片'; dl.style.display='block'; dl.style.textAlign='center'; dl.style.marginTop='10px';
+  dl.className='btn-sec'; dl.textContent='💾 下载图片'; dl.style.display='block'; dl.style.textAlign='center'; dl.style.marginTop='6px';
   pn.appendChild(dl);
   var close=document.createElement('button'); close.className='btn-sec'; close.textContent='关闭';
   close.addEventListener('click',function(){ ov.remove(); });
@@ -1386,13 +1449,62 @@ function render(){
     card.dataset.id = ch2.id;
     card.innerHTML='<div class="em">'+ch2.emoji+'</div><div class="nm">'+ch2.name+'</div>'+chipsHtml+tipHtml;
     card.title=ch2.name+'：'+ch2.line;
-    (function(id){
+    (function(id,emoji){
       card.addEventListener('click',function(){
         if(placement[id]){ delete placement[id]; selected=null; }
         else{ selected=(selected===id)?null:id; }
         render();
       });
-    })(ch2.id);
+      // 拖拽入座（pointer events，兼容触屏+鼠标）
+      var dragStartX=0, dragStartY=0, isDragging=false, ghost=null;
+      card.addEventListener('pointerdown', function(e){
+        if(placement[id]) return; // 已入座不能拖
+        dragStartX=e.clientX; dragStartY=e.clientY;
+        isDragging=false;
+        // 创建 ghost 元素跟随手指
+        ghost = document.createElement('div');
+        ghost.style.cssText='position:fixed;pointer-events:none;z-index:9999;font-size:40px;transform:translate(-50%,-50%);transition:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));opacity:.9;';
+        ghost.textContent = emoji;
+        document.body.appendChild(ghost);
+        card.setPointerCapture(e.pointerId);
+      });
+      card.addEventListener('pointermove', function(e){
+        if(!ghost) return;
+        var dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+        if(!isDragging && Math.hypot(dx,dy) > 8){ isDragging=true; }
+        if(isDragging){
+          ghost.style.left = e.clientX + 'px';
+          ghost.style.top = e.clientY + 'px';
+        }
+      });
+      card.addEventListener('pointerup', function(e){
+        if(!ghost) return;
+        document.body.removeChild(ghost); ghost=null;
+        card.releasePointerCapture(e.pointerId);
+        if(isDragging){
+          // 检查 drop target：哪个 seat 包含这个点
+          var target = document.elementFromPoint(e.clientX, e.clientY);
+          var seatEl = target ? target.closest('.seat') : null;
+          if(seatEl){
+            var r = parseInt(seatEl.dataset.r,10);
+            var c = parseInt(seatEl.dataset.c,10);
+            // 如果座位空，拖入座
+            if(!placementOf(r,c)){
+              pushUndo();
+              placement[id]={r:r,c:c};
+              selected=null;
+              var ch = charById(LEVELS[cur], id);
+              SoundFX.place(); vibrate(15);
+              triggerNpcReact(r, c, ch);
+              steps++;
+              render();
+            } else { SoundFX.select(); }
+          }
+          isDragging=false;
+        }
+      });
+      card.addEventListener('pointercancel', function(){ if(ghost){ document.body.removeChild(ghost); ghost=null; } isDragging=false; });
+    })(ch2.id, ch2.emoji);
     tray.appendChild(card);
   }
 
@@ -1442,6 +1554,7 @@ function showWin(){
     if(lv.difficulty && lv.difficulty > _endlessStats.bestDifficulty){ _endlessStats.bestDifficulty = lv.difficulty; }
     if(_endlessStreak > _endlessStats.maxStreak){ _endlessStats.maxStreak = _endlessStreak; }
     try{ localStorage.setItem(ENDLESS_KEY, JSON.stringify(_endlessStats)); }catch(e){}
+    addLeaderEntry(_endlessDiff, stars);
   }
 
   // 成就检测
@@ -1453,11 +1566,31 @@ function showWin(){
   document.getElementById('winStar').innerHTML=starHtml;
   document.getElementById('winSteps').textContent='本次操作 '+steps+' 步（推荐 ≤'+lv.chars.length+' 步）';
   document.getElementById('winSub').textContent=lv.done;
+  // 盖章 + 粒子
+  var winCard = document.querySelector('.win-card');
+  var seal = document.getElementById('winSeal');
+  if(!seal){ seal = document.createElement('div'); seal.id='winSeal'; seal.className='win-seal'; seal.textContent='完'; winCard.appendChild(seal); }
+  // 先清旧粒子
+  winCard.querySelectorAll('.win-particle').forEach(function(p){ p.remove(); });
+  // 生成 12 颗扩散粒子
+  var colors=['#dc2626','#f59e0b','#10b981','#3b82f6','#ec4899','#8b5cf6'];
+  for(var pi=0;pi<12;pi++){
+    var p = document.createElement('div');
+    p.className='win-particle';
+    var angle = (pi/12)*Math.PI*2;
+    var dist = 120 + Math.random()*60;
+    p.style.setProperty('--dx', Math.cos(angle)*dist + 'px');
+    p.style.setProperty('--dy', Math.sin(angle)*dist + 'px');
+    p.style.background = colors[pi%colors.length];
+    p.style.left='50%'; p.style.top='50%'; p.style.marginLeft='-5px'; p.style.marginTop='-5px';
+    p.style.animationDelay = (Math.random()*0.1).toFixed(2) + 's';
+    winCard.appendChild(p);
+  }
   document.getElementById('win').classList.remove('hidden');
   document.getElementById('win').classList.add('win-celebrate');
   setTimeout(function(){
     document.getElementById('win').classList.remove('win-celebrate');
-  },1200);
+  },1500);
 }
 
 // ============ 撤销栈 ============
@@ -2059,6 +2192,7 @@ var SoundFX = (function(){
 
 // ============ 关卡选择页 ============
 var _lsFilter = 'all'; // 'all' | 'npc' | 'pair' | 'threeStar'
+var _lsTraitFilter = ''; // trait 二级筛选
 document.getElementById('btnLevelSelect').addEventListener('click', function(){
   renderLevelGrid();
   document.getElementById('levelSelectOverlay').classList.remove('hidden');
@@ -2092,6 +2226,29 @@ function renderLevelGrid(){
     filterBar.appendChild(fb);
   }
   grid.appendChild(filterBar);
+  // 二级 trait 筛选
+  var traitBar = document.createElement('div'); traitBar.className='ls-filter-bar'; traitBar.style.marginTop='4px';
+  traitBar.style.fontSize='11px';
+  var traitFilters = [
+    {k:'',      ic:'', t:'不限'},
+    {k:'quiet', ic:'🤫', t:'怕吵'},
+    {k:'loud',  ic:'🗣️', t:'唠嗑'},
+    {k:'scented', ic:'🌸', t:'香水'},
+    {k:'smellSensitive', ic:'🤧', t:'怕香水'},
+    {k:'window', ic:'🪟', t:'靠窗'},
+    {k:'front', ic:'⬆️', t:'前排'},
+    {k:'couple', ic:'💑', t:'情侣'},
+    {k:'rivals', ic:'⚔️', t:'冤家'},
+  ];
+  for(var ti=0;ti<traitFilters.length;ti++){
+    var tb = document.createElement('button');
+    tb.className = 'ls-filter'+(_lsTraitFilter===traitFilters[ti].k?' active':'');
+    tb.style.fontSize='11px'; tb.style.padding='2px 6px';
+    tb.textContent = traitFilters[ti].ic+(traitFilters[ti].ic?' ':'')+traitFilters[ti].t;
+    (function(kk){ tb.addEventListener('click',function(){ _lsTraitFilter=kk; renderLevelGrid(); }); })(traitFilters[ti].k);
+    traitBar.appendChild(tb);
+  }
+  grid.appendChild(traitBar);
   // 关卡卡片
   var cardsWrap = document.createElement('div'); cardsWrap.className='lvl-cards-wrap';
   for(var i=0;i<LEVELS.length;i++){
@@ -2102,10 +2259,18 @@ function renderLevelGrid(){
     if(!locked) unlockedCount++;
     var npcCount = _getNpcCount(lv);
     var hasPair = lv.pairs && lv.pairs.length>0;
-    // 筛选
+    // 主筛选
     if(_lsFilter==='npc' && npcCount===0) continue;
     if(_lsFilter==='pair' && !hasPair) continue;
     if(_lsFilter==='threeStar' && stars<3) continue;
+    // trait 筛选
+    if(_lsTraitFilter){
+      var hasTrait = false;
+      for(var ci=0;ci<lv.chars.length;ci++){
+        if(lv.chars[ci].traits && lv.chars[ci].traits.indexOf(_lsTraitFilter)>=0){ hasTrait=true; break; }
+      }
+      if(!hasTrait && !(lv.pairs && lv.pairs.some(function(p){ return p.type===_lsTraitFilter; }))) continue;
+    }
     var card = document.createElement('div');
     card.className = 'lvl-card' + (locked?' locked':'') + (i===cur?' active':'');
     // num
@@ -2182,32 +2347,42 @@ function showNpcBubble(r, c) {
   var lv = LEVELS[cur]; if(!lv) return;
   var cell = lv.rows[r][c]; if(!cell || !cell.npc) return;
   var npc = cell.npc;
-  // 随机选一句台词
   var all = npc.reacts && npc.reacts.length > 0 ? npc.reacts : ['随便坐'];
   var line = all[Math.floor(Math.random()*all.length)];
   if(!line) line = '随便坐哈';
   
-  // 找座位 DOM
   var seats = document.querySelectorAll('.seat');
   var cols = lv.rows[0].length;
   var targetEl = seats[r * cols + c];
   if(!targetEl) return;
   
-  // 清旧 bubble
   var old = targetEl.querySelector('.npc-bubble');
   if(old) old.remove();
   
-  // 造气泡
   var bubble = document.createElement('div');
   bubble.className = 'npc-bubble';
-  bubble.innerHTML = '<div class="npc-bubble-em">'+getSkinEmoji(r*7+c*13)+'</div><div class="npc-bubble-text">'+line+'</div><div class="npc-bubble-tail"></div>';
+  bubble.innerHTML = '<div class="npc-bubble-em">'+getSkinEmoji(r*7+c*13)+'</div><div class="npc-bubble-text"></div><div class="npc-bubble-tail"></div>';
   targetEl.appendChild(bubble);
   
-  // 自动消失
+  // 打字机效果：逐字显示
+  var textEl = bubble.querySelector('.npc-bubble-text');
+  var idx = 0;
+  var typeSpeed = 45; // ms per char
+  function typeNext(){
+    if(!bubble.parentNode) return; // 气泡已消失
+    if(idx < line.length){
+      textEl.textContent += line[idx++];
+      setTimeout(typeNext, typeSpeed);
+    }
+  }
+  typeNext();
+  
+  // 自动消失（给打字时间 + 留 1 秒）
+  var totalMs = line.length * typeSpeed + 1500;
   setTimeout(function(){
     bubble.classList.add('fadeOut');
     setTimeout(function(){ if(bubble.parentNode) bubble.parentNode.removeChild(bubble); }, 400);
-  }, 2200);
+  }, Math.min(totalMs, 3200));
 }
 
 // 玩家入座后，检查周围 NPC 是否有反应
@@ -2252,7 +2427,13 @@ document.getElementById('btnDaily').addEventListener('click', function(){
   var seedStr = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
   var seed = 0;
   for(var i=0;i<seedStr.length;i++){ seed = (seed*31 + seedStr.charCodeAt(i)) >>> 0; }
-  var lv = generateLevel(50 + (today.getDate()%4)*15, seed);
+  var difficulty = 50 + (today.getDate()%4)*15;
+  // 验证 seed 生成的关卡有解；无解则 seed 递增最多 20 次
+  var lv = null;
+  for(var t=0;t<20;t++){
+    var trialLv = generateLevel(difficulty, seed + t*100);
+    if(trialLv && trialLv.solutionCount >= 1){ lv = trialLv; seed = seed + t*100; break; }
+  }
   if(!lv){ showBanner('今日挑战生成失败，请稍后再试'); return; }
   _dailyLevelBackup = LEVELS[LEVELS.length-1];
   LEVELS.push(lv);
@@ -2301,11 +2482,11 @@ resetLevel = function(){
 
 // ============ 主题切换 ============
 var _THEME_KEY = 'sqp_theme_v1';
-var THEMES = ['','theme-ink','theme-toon','theme-dark'];
+var THEMES = ['','theme-ink','theme-toon','theme-dark','theme-blue','theme-pink'];
 var _themeIdx = 0;
 try{ _themeIdx = parseInt(localStorage.getItem(_THEME_KEY)||'0',10)||0; }catch(e){}
 function applyTheme(){
-  document.body.classList.remove('theme-ink','theme-toon','theme-dark');
+  document.body.classList.remove('theme-ink','theme-toon','theme-dark','theme-blue','theme-pink');
   document.body.className = document.body.className + ' ' + THEMES[_themeIdx];
 }
 applyTheme();
@@ -2313,7 +2494,7 @@ document.getElementById('btnTheme').addEventListener('click', function(){
   _themeIdx = (_themeIdx + 1) % THEMES.length;
   applyTheme();
   try{ localStorage.setItem(_THEME_KEY, _themeIdx); }catch(e){}
-  var names = ['默认紫','国风红','卡通橙','夜间黑'];
+  var names = ['默认紫','国风红','卡通橙','夜间黑','商务蓝','樱花粉'];
   showBanner('🎨 '+names[_themeIdx]+'主题');
 });
 
@@ -2341,12 +2522,81 @@ function vibrate(pattern){
 // ============ 无尽模式 ============
 var _isEndless = false;
 var _endlessDiff = 20;
+var _endlessDiffMin = 1; // 难度范围下限
+var _endlessDiffMax = 100; // 难度范围上限
+var _LEADER_KEY = 'sqp_leader_v1';
+var _leaderboard = []; // [{diff, stars, date}]
+try{ _leaderboard = JSON.parse(localStorage.getItem(_LEADER_KEY)||'[]'); if(!Array.isArray(_leaderboard)) _leaderboard=[]; }catch(e){}
+function saveLeader(){ try{ localStorage.setItem(_LEADER_KEY, JSON.stringify(_leaderboard)); }catch(e){} }
+function addLeaderEntry(diff, stars){
+  _leaderboard.push({diff:diff, stars:stars, date:new Date().toLocaleDateString('zh-CN')});
+  _leaderboard.sort(function(a,b){ return (b.stars - a.stars) || (b.diff - a.diff); });
+  if(_leaderboard.length > 10) _leaderboard = _leaderboard.slice(0,10);
+  saveLeader();
+}
+function openLeaderboard(){
+  var ov=document.createElement('div'); ov.className='modal-overlay';
+  var pn=document.createElement('div'); pn.className='modal';
+  var h=document.createElement('h3'); h.textContent='🏆 无尽模式 Top 10'; h.style.textAlign='center'; pn.appendChild(h);
+  if(_leaderboard.length === 0){
+    var empty=document.createElement('div'); empty.style.cssText='text-align:center;color:#9ca3af;padding:30px;'; empty.textContent='还没记录哦，去打无尽模式吧！';
+    pn.appendChild(empty);
+  } else {
+    var tbl=document.createElement('table'); tbl.style.cssText='width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;';
+    var head=tbl.insertRow(); ['#','难度','星级','日期'].forEach(function(t){ var c=head.insertCell(); c.style.cssText='font-weight:700;padding:6px 8px;background:#f3f4f6;color:#374151;border-bottom:2px solid #e5e7eb;'; c.textContent=t; });
+    for(var i=0;i<_leaderboard.length;i++){
+      var r=tbl.insertRow(); r.style.cssText=i<3?'background:#fef3c7;':'';
+      var rank=r.insertCell(); rank.style.cssText='padding:5px 8px;font-weight:700;border-bottom:1px solid #f3f4f6;'; rank.textContent=(i+1)+['🥇','🥈','🥉'][i]||(i+1);
+      var d=r.insertCell(); d.style.cssText='padding:5px 8px;border-bottom:1px solid #f3f4f6;'; d.textContent='⚙️ '+_leaderboard[i].diff;
+      var s=r.insertCell(); s.style.cssText='padding:5px 8px;color:#f59e0b;border-bottom:1px solid #f3f4f6;'; s.textContent='★'.repeat(_leaderboard[i].stars)+'☆'.repeat(3-_leaderboard[i].stars);
+      var da=r.insertCell(); da.style.cssText='padding:5px 8px;color:#6b7280;border-bottom:1px solid #f3f4f6;'; da.textContent=_leaderboard[i].date;
+    }
+    pn.appendChild(tbl);
+  }
+  var close=document.createElement('button'); close.className='btn-sec'; close.textContent='关闭'; close.style.display='block'; close.style.margin='15px auto 0';
+  close.addEventListener('click',function(){ ov.remove(); });
+  pn.appendChild(close);
+  ov.appendChild(pn);
+  ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+// 难度范围下拉选择
 document.getElementById('btnEndless').addEventListener('click', function(){
   SoundFX.select();
   if(_isEndless){ resetLevel(); return; }
-  _endlessDiff = 20;
-  pushEndlessLevel();
-  showBanner('🌊 无尽模式 · 难度从 20 开始递增');
+  // 让用户选起始难度范围
+  var ranges = [
+    {label:'🌱 轻松 (1-30)', min:1, max:30},
+    {label:'🔥 中等 (31-60)', min:31, max:60},
+    {label:'💎 困难 (61-100)', min:61, max:100},
+    {label:'🎲 随机 (1-100)', min:1, max:100}
+  ];
+  var ov=document.createElement('div'); ov.className='modal-overlay';
+  var pn=document.createElement('div'); pn.className='modal';
+  var h=document.createElement('h3'); h.textContent='🌊 无尽模式 · 选难度范围'; h.style.textAlign='center'; pn.appendChild(h);
+  ranges.forEach(function(r){
+    var b=document.createElement('button'); b.className='btn-sec'; b.textContent=r.label;
+    b.style.cssText='display:block;width:100%;margin:6px 0;padding:10px;border:2px solid #e0e7ff;background:#f5f3ff;border-radius:10px;font-size:15px;color:#4338ca;font-weight:600;';
+    b.addEventListener('click', function(){
+      _endlessDiffMin = r.min; _endlessDiffMax = r.max;
+      _endlessDiff = r.min + Math.floor(Math.random()*(r.max-r.min+1));
+      ov.remove();
+      LEVELS = LEVELS.filter(function(l){ return !l.tip || l.tip.indexOf('档难度')<0; });
+      _isEndless = true;
+      pushEndlessLevel();
+      showBanner('🌊 无尽模式 · 起始难度 '+_endlessDiff+'（'+r.label+'）');
+    });
+    pn.appendChild(b);
+  });
+  var leaderBtn=document.createElement('button'); leaderBtn.className='btn-pri'; leaderBtn.textContent='🏆 查看 Top10'; leaderBtn.style.cssText='display:block;width:100%;margin-top:14px;';
+  leaderBtn.addEventListener('click', function(){ ov.remove(); openLeaderboard(); });
+  pn.appendChild(leaderBtn);
+  var close=document.createElement('button'); close.className='btn-sec'; close.textContent='取消'; close.style.display='block'; close.style.margin='8px auto 0';
+  close.addEventListener('click',function(){ ov.remove(); });
+  pn.appendChild(close);
+  ov.appendChild(pn);
+  ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
 });
 function pushEndlessLevel(){
   var lv = generateLevel(_endlessDiff, (_endlessDiff*137 + 99991)>>>0);
